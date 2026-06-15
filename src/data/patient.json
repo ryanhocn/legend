@@ -1,0 +1,34 @@
+{
+  "surname": "Hart",
+  "forename": "Amelia",
+  "displayName": "Hart, Amelia",
+  "initials": "AH",
+  "pronouns": "she/her",
+  "sex": "Female",
+  "age": 64,
+  "dob": "14/03/1961",
+  "caseId": "LEG-000001",
+  "location": "AMU Bay 3",
+  "specialty": "General Surgery",
+  "attending": {
+    "forename": "Annabel",
+    "surname": "Green",
+    "credential": "MD",
+    "specialty": "General Surgery"
+  },
+  "primaryCare": {
+    "forename": "Rajesh",
+    "surname": "Shah",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "Penicillin — rash",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "Sepsis screen positive",
+  "presentingComplaint": "Fever, RUQ pain and jaundice",
+  "phone": "No mobile on file",
+  "infection": "None recorded",
+  "bmi": "29.1",
+  "stickyNote": "Sepsis screen positive 09:20.\nChase blood cultures + lactate.\nConfirm abx given.\nAsk reg re ERCP today."
+}
