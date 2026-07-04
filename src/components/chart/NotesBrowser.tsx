@@ -6,7 +6,9 @@ import {
   Filter,
   Info,
   RefreshCw,
+  Search,
   SquarePen,
+  X,
 } from "lucide-react";
 import {
   Group as PanelGroup,
@@ -40,10 +42,23 @@ function filterNotes(notes: Note[], tab: TabKey): Note[] {
   return notes.filter((n) => n.category === tab);
 }
 
+/** Epic-style text search across body, author, type and service. */
+function searchNotes(notes: Note[], query: string): Note[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return notes;
+  return notes.filter((note) =>
+    [note.body, note.author, note.noteType, note.service, note.authorRole]
+      .join("\n")
+      .toLowerCase()
+      .includes(needle),
+  );
+}
+
 /**
- * Dense notes activity (Notes main tab): action toolbar, category tabs and a
- * resizable mailbox list / preview split. Writing happens in the right-rail
- * NoteEditor opened via onNewNote.
+ * Dense notes activity (Notes main tab): action toolbar, category tabs, text
+ * search and a resizable mailbox list / preview split. Selected notes open as
+ * preview tabs so several can be cross-referenced while writing in the
+ * right-rail NoteEditor (opened via onNewNote).
  */
 export function NotesBrowser({
   notes,
@@ -53,11 +68,42 @@ export function NotesBrowser({
   onNewNote: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>("All Notes");
-  // null means "no explicit pick yet" — selection falls back to the first
-  // visible (newest) note, and re-falls-back whenever the filter narrows.
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const listRef = useRef<PanelImperativeHandle>(null);
   const [listCollapsed, setListCollapsed] = useState(false);
+
+  // Newest first; Unix timestamp is the sort key so mixed date labels stay correct.
+  const filtered = useMemo(
+    () =>
+      searchNotes(filterNotes(notes, activeTab), query)
+        .slice()
+        .sort((a, b) => b.timestamp - a.timestamp),
+    [notes, activeTab, query],
+  );
+
+  // Preview tabs: every selected note stays open (across category filters)
+  // until closed, so several notes can be read side by side while writing.
+  // Seeded with the newest note, mirroring the old auto-preview behavior.
+  const [openIds, setOpenIds] = useState<string[]>(() =>
+    filtered[0] ? [filtered[0].id] : [],
+  );
+  const [activePreviewId, setActivePreviewId] = useState<string | null>(
+    filtered[0]?.id ?? null,
+  );
+
+  const openNotes = openIds
+    .map((id) => notes.find((n) => n.id === id))
+    .filter((n): n is Note => Boolean(n));
+  const activeNote = openNotes.find((n) => n.id === activePreviewId) ?? openNotes.at(-1) ?? null;
+
+  function openPreview(id: string) {
+    setOpenIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setActivePreviewId(id);
+  }
+
+  function closePreview(id: string) {
+    setOpenIds((prev) => prev.filter((openId) => openId !== id));
+  }
 
   function toggleList() {
     const panel = listRef.current;
@@ -65,17 +111,6 @@ export function NotesBrowser({
     if (panel.isCollapsed()) panel.expand();
     else panel.collapse();
   }
-
-  // Newest first; Unix timestamp is the sort key so mixed date labels stay correct.
-  const filtered = useMemo(
-    () =>
-      filterNotes(notes, activeTab)
-        .slice()
-        .sort((a, b) => b.timestamp - a.timestamp),
-    [notes, activeTab],
-  );
-  // Keep selection valid as the filter narrows: fall back to the first visible note.
-  const selected = filtered.find((n) => n.id === selectedId) ?? filtered[0] ?? null;
 
   return (
     <div className="notes-browser">
@@ -96,6 +131,20 @@ export function NotesBrowser({
           <Filter size={14} />
           Filter
         </button>
+        <div className="notes-search">
+          <Search size={13} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search note text..."
+            aria-label="Search note text"
+          />
+          {query && (
+            <button aria-label="Clear search" onClick={() => setQuery("")}>
+              <X size={12} />
+            </button>
+          )}
+        </div>
         <div className="toolbar-spacer" />
         <button>
           <RefreshCw size={14} />
@@ -105,7 +154,7 @@ export function NotesBrowser({
 
       <div className="notes-tabs" role="tablist">
         {NOTE_TABS.map((tab) => {
-          const count = filterNotes(notes, tab).length;
+          const count = searchNotes(filterNotes(notes, tab), query).length;
           return (
             <button
               key={tab}
@@ -137,8 +186,8 @@ export function NotesBrowser({
           >
             <NoteList
               notes={filtered}
-              selectedId={selected?.id ?? null}
-              onSelect={setSelectedId}
+              selectedId={activeNote?.id ?? null}
+              onSelect={openPreview}
             />
           </Panel>
 
@@ -154,7 +203,39 @@ export function NotesBrowser({
           </PanelResizeHandle>
 
           <Panel defaultSize="62%" minSize="35%">
-            <NotePreview note={selected} />
+            <div className="preview-pane">
+              {openNotes.length > 1 && (
+                <div className="preview-tabbar" role="tablist">
+                  {openNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className={
+                        note.id === activeNote?.id
+                          ? "preview-tab active"
+                          : "preview-tab"
+                      }
+                    >
+                      <button
+                        role="tab"
+                        aria-selected={note.id === activeNote?.id}
+                        className="preview-tab-label"
+                        onClick={() => setActivePreviewId(note.id)}
+                      >
+                        {note.noteType}
+                      </button>
+                      <button
+                        className="preview-tab-close"
+                        aria-label={`Close ${note.noteType}`}
+                        onClick={() => closePreview(note.id)}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <NotePreview note={activeNote} />
+            </div>
           </Panel>
         </PanelGroup>
       </div>

@@ -161,6 +161,7 @@ PLAN:
     timestamp: 1781505600,
     status: "signed",
     admission: true,
+    urgent: true,
     body: `EMERGENCY DEPARTMENT PROVIDER NOTE
 
 Presenting complaint: central epigastric pain, rigors and jaundice.
@@ -200,6 +201,7 @@ allergy review to follow on the ward.`,
     timestamp: 1781503500,
     status: "signed",
     admission: true,
+    urgent: true,
     body: `ED TRIAGE NOTE
 
 64F self-presented with "tummy pain", chills and "yellow eyes". Rigors in the

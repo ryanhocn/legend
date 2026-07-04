@@ -96,6 +96,8 @@ export type ClinicalNote = {
   status: NoteStatus;
   /** True for notes that belong to the admission episode (cross-cuts category). */
   admission?: boolean;
+  /** Time-critical content (e.g. ED triage); shown with a red marker in lists. */
+  urgent?: boolean;
   body: string;
   addendum?: string;
 };
@@ -194,6 +196,12 @@ export type ClinicalDocument =
 /** Back-compat aliases so list/preview components keep their narrow prop types. */
 export type Note = ClinicalNote;
 export type Report = ClinicalReport;
+
+/** The trainee using the simulator; captured by the sign-in page. */
+export type UserProfile = {
+  forename: string;
+  surname: string;
+};
 
 /** An open note in the right-rail NoteWriter; multiple can be edited at once. */
 export type NoteDraft = {

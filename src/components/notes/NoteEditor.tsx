@@ -53,14 +53,16 @@ export function NoteEditor({
   value,
   onChangeNoteType,
   onChange,
-  onClose,
+  onSign,
+  onPend,
 }: {
   noteType: string;
   service: string;
   value: string;
   onChangeNoteType: (noteType: string) => void;
   onChange: (value: string) => void;
-  onClose: () => void;
+  onSign: () => void;
+  onPend: () => void;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   // The live selection inside the editor, saved on every interaction so the font
@@ -246,12 +248,16 @@ export function NoteEditor({
       <div className="note-editor-footer">
         <span className="note-editor-wordcount">{words} words</span>
         <div className="toolbar-spacer" />
-        <button onClick={onClose}>Pend</button>
-        <button onClick={onClose}>
+        {/* Pend files the draft as an incomplete note; Sign publishes it and
+            opens Wrap-Up feedback. Both disabled while the note is empty. */}
+        <button onClick={onPend} disabled={words === 0}>
+          Pend
+        </button>
+        <button>
           <Share2 size={13} />
           Share
         </button>
-        <button className="green-button" onClick={onClose}>
+        <button className="green-button" onClick={onSign} disabled={words === 0}>
           <CheckCircle2 size={13} />
           Sign
         </button>

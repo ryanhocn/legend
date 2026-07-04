@@ -1,11 +1,14 @@
 import { Bell, Menu, Search, StickyNote } from "lucide-react";
+import type { UserProfile } from "../../types";
 
 export function TopSystemBar({
   stickyOpen,
   onToggleSticky,
+  user,
 }: {
   stickyOpen: boolean;
   onToggleSticky: () => void;
+  user: UserProfile;
 }) {
   return (
     <header className="top-system-bar">
@@ -38,7 +41,13 @@ export function TopSystemBar({
         </button>
 
         <Bell size={16} />
-        <div className="user-bubble">MJ</div>
+        <div
+          className="user-bubble"
+          title={`${user.forename} ${user.surname} — Medical Student`}
+        >
+          {(user.forename[0] ?? "").toUpperCase()}
+          {(user.surname[0] ?? "").toUpperCase()}
+        </div>
       </div>
     </header>
   );

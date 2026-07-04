@@ -25,13 +25,23 @@ Branch / worktree: main
   in localStorage. Found + fixed a real htmlToPlainText bug in the process (leading
   unwrapped text node merged into the next line, killing section detection).
 
+- Usable-prototype pass (04/07 late): sign-in gate captures the trainee's name
+  (localStorage, drives the top-right bubble + note authorship); Sign now publishes
+  the draft as a signed note in All Notes (attributed "SURNAME, Forename, MS /
+  *MEDICAL STUDENT") and auto-opens the Wrap-Up feedback report; Pend files it as
+  Incomplete. Notes QoL: text search across note content, red time-critical marks
+  on the ED notes, and multi-tab note preview for cross-referencing. All
+  browser-verified end to end.
+
 ## In flight
-- Nothing. Feature complete through SPEC Phase 3.
+- Nothing. Prototype loop is demo-ready.
 
 ## Ideas / later
-- Persist open note drafts (currently in-memory; a page reload drops them).
+- Persist open (unsigned) drafts; only signed/pended notes survive reload today.
 - LLM judge layer for paraphrase-heavy rubric items (schema already judge-agnostic).
 - Second case once the hackathon story is set.
+- Epic-inspired backlog from research: hover previews, "new since last viewed"
+  markers, AI chart summarization with citations.
 
 ## Blocked / decisions needed
 - None.

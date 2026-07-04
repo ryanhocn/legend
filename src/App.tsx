@@ -15,6 +15,7 @@ import { PatientSidebar } from "./components/panels/PatientSidebar";
 import { DocumentPanel } from "./components/panels/DocumentPanel";
 import { PlaceholderModule } from "./components/PlaceholderModule";
 import { ResultsModule } from "./components/results/ResultsModule";
+import { SignInPage } from "./components/SignInPage";
 import { StickyNotePopup } from "./components/StickyNotePopup";
 import { SummaryModule } from "./components/summary/SummaryModule";
 import { WrapUpModule } from "./components/wrapup/WrapUpModule";
@@ -25,10 +26,49 @@ import {
 import { caseCholangitis001Encounters } from "./data/patients/cholangitis001/encounters";
 import { mainTabs } from "./data/tabs";
 import patient from "./data/patient.json";
-import type { ChartTab, MainTab, NoteDraft } from "./types";
+import { usePersistentState } from "./hooks/usePersistentState";
+import { htmlToPlainText, wordCount } from "./lib/noteText";
+import { buildUserNote } from "./lib/userNotes";
+import { saveWrapupAttempt } from "./lib/wrapupAttempt";
+import type {
+  ChartTab,
+  ClinicalNote,
+  MainTab,
+  NoteDraft,
+  NoteStatus,
+  UserProfile,
+} from "./types";
 import "./App.css";
 
+function parseUser(raw: string): UserProfile | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as UserProfile;
+    return typeof parsed.forename === "string" && typeof parsed.surname === "string"
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseUserNotes(raw: string): ClinicalNote[] {
+  try {
+    const parsed = JSON.parse(raw) as ClinicalNote[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function App() {
+  const [storedUser, setStoredUser] = usePersistentState("legend-user", "");
+  const user = parseUser(storedUser);
+  const [storedUserNotes, setStoredUserNotes] = usePersistentState(
+    "legend-user-notes-cholangitis001",
+    "[]",
+  );
+  const userNotes = parseUserNotes(storedUserNotes);
   const [mainTab, setMainTab] = useState<MainTab>("summary");
   const [chartTab, setChartTab] = useState<ChartTab>("encounters");
   const [editors, setEditors] = useState<NoteDraft[]>([]);
@@ -46,8 +86,12 @@ function App() {
     else panel.collapse();
   }
 
+  // User-authored notes join the case content in every view.
+  const allDocuments = [...caseCholangitis001Documents, ...userNotes];
+  const allNotes = [...caseCholangitis001Notes, ...userNotes];
+
   const selectedDocument = selectedDocId
-    ? caseCholangitis001Documents.find((doc) => doc.id === selectedDocId) ?? null
+    ? allDocuments.find((doc) => doc.id === selectedDocId) ?? null
     : null;
 
   // Active draft falls back to the last-opened tab if the active one was closed.
@@ -70,6 +114,23 @@ function App() {
 
   function closeEditor(id: string) {
     setEditors((prev) => prev.filter((draft) => draft.id !== id));
+  }
+
+  // Sign publishes the draft as a signed note and opens Wrap-Up feedback on
+  // it; Pend files it as an incomplete note. Both remove the draft tab.
+  function finishDraft(id: string, status: NoteStatus) {
+    if (!user) return;
+    const draft = editors.find((d) => d.id === id);
+    if (!draft) return;
+    const text = htmlToPlainText(draft.body);
+    if (wordCount(text) === 0) return;
+    const note = buildUserNote(draft, user, text, status, new Date());
+    setStoredUserNotes(JSON.stringify([...userNotes, note]));
+    closeEditor(id);
+    if (status === "signed") {
+      saveWrapupAttempt("cholangitis001", text);
+      setMainTab("wrapup");
+    }
   }
 
   function updateEditorBody(id: string, body: string) {
@@ -97,6 +158,8 @@ function App() {
         onClose={closeEditor}
         onChangeBody={updateEditorBody}
         onChangeNoteType={updateEditorNoteType}
+        onSign={(id) => finishDraft(id, "signed")}
+        onPend={(id) => finishDraft(id, "incomplete")}
       />
     ) : (
       <DocumentPanel
@@ -105,11 +168,16 @@ function App() {
       />
     );
 
+  if (!user) {
+    return <SignInPage onComplete={(profile) => setStoredUser(JSON.stringify(profile))} />;
+  }
+
   return (
     <div className="legend-app">
       <TopSystemBar
         stickyOpen={stickyOpen}
         onToggleSticky={() => setStickyOpen((open) => !open)}
+        user={user}
       />
 
       <div className="ehr-workspace">
@@ -130,8 +198,8 @@ function App() {
                     chartTab={chartTab}
                     setChartTab={setChartTab}
                     encounters={caseCholangitis001Encounters}
-                    documents={caseCholangitis001Documents}
-                    notes={caseCholangitis001Notes}
+                    documents={allDocuments}
+                    notes={allNotes}
                     selectedDocId={selectedDocId}
                     onSelectDocument={setSelectedDocId}
                     onNewNote={openNewNote}
@@ -141,13 +209,12 @@ function App() {
                 {mainTab === "results" && <ResultsModule />}
 
                 {mainTab === "notes" && (
-                  <NotesBrowser
-                    notes={caseCholangitis001Notes}
-                    onNewNote={openNewNote}
-                  />
+                  <NotesBrowser notes={allNotes} onNewNote={openNewNote} />
                 )}
 
-                {mainTab === "wrapup" && <WrapUpModule editors={editors} />}
+                {mainTab === "wrapup" && (
+                  <WrapUpModule editors={editors} userNotes={userNotes} />
+                )}
 
                 {mainTab !== "summary" &&
                   mainTab !== "chart" &&

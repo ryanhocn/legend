@@ -1,51 +1,68 @@
 import { useState } from "react";
 import { ClipboardCheck } from "lucide-react";
 import { usePersistentState } from "../../hooks/usePersistentState";
+import { formatClinician } from "../../lib/clinician";
 import { htmlToPlainText, wordCount } from "../../lib/noteText";
 import { scoreNote } from "../../lib/rubric";
+import { formatStamp } from "../../lib/userNotes";
+import { attemptKey, parseAttempt, type StoredAttempt } from "../../lib/wrapupAttempt";
 import { caseCholangitis001Rubric as rubric } from "../../data/patients/cholangitis001/rubric";
-import type { NoteDraft } from "../../types";
+import type { ClinicalNote, NoteDraft } from "../../types";
 import { FeedbackReport } from "./FeedbackReport";
 
-type StoredAttempt = { text: string; at: string };
-
-function parseAttempt(raw: string): StoredAttempt | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as StoredAttempt;
-    return typeof parsed.text === "string" && typeof parsed.at === "string"
-      ? parsed
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-/** DD/MM HH:MM, matching the app's absolute-time convention. */
-function formatNow(): string {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(now.getDate())}/${pad(now.getMonth() + 1)} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-}
+type Candidate = {
+  key: string;
+  label: string;
+  meta: string;
+  text: string;
+};
 
 /**
- * Wrap-up activity: submit an open note draft for rubric feedback. The last
- * attempt persists per case so the report survives reloads.
+ * Wrap-up activity: submit an open draft or one of your signed notes for
+ * rubric feedback. The last attempt persists per case so the report survives
+ * reloads.
  */
-export function WrapUpModule({ editors }: { editors: NoteDraft[] }) {
+export function WrapUpModule({
+  editors,
+  userNotes,
+}: {
+  editors: NoteDraft[];
+  userNotes: ClinicalNote[];
+}) {
   const [storedAttempt, setStoredAttempt] = usePersistentState(
-    `legend-wrapup-${rubric.caseId}`,
+    attemptKey(rubric.caseId),
     "",
   );
   const attempt = parseAttempt(storedAttempt);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  const candidates: Candidate[] = [
+    ...editors.map((draft) => {
+      const text = htmlToPlainText(draft.body);
+      return {
+        key: draft.id,
+        label: `${draft.noteType} (open draft)`,
+        meta: `${draft.service} · ${wordCount(text)} words`,
+        text,
+      };
+    }),
+    ...userNotes
+      .filter((note) => note.status === "signed")
+      .map((note) => ({
+        key: note.id,
+        label: `${note.noteType} (signed)`,
+        meta: `${formatClinician(note.author, note.credential)} · ${note.dateOfService} · ${wordCount(note.body)} words`,
+        text: note.body,
+      })),
+  ];
   const selected =
-    editors.find((draft) => draft.id === selectedId) ?? editors[0] ?? null;
+    candidates.find((c) => c.key === selectedKey) ?? candidates[0] ?? null;
 
   function submit() {
     if (!selected) return;
-    const text = htmlToPlainText(selected.body);
-    setStoredAttempt(JSON.stringify({ text, at: formatNow() } satisfies StoredAttempt));
+    setStoredAttempt(
+      JSON.stringify({ text: selected.text, at: formatStamp(new Date()) } satisfies StoredAttempt),
+    );
   }
 
   return (
@@ -68,37 +85,32 @@ export function WrapUpModule({ editors }: { editors: NoteDraft[] }) {
           scoredAt={attempt.at}
           onReset={() => setStoredAttempt("")}
         />
-      ) : editors.length === 0 ? (
+      ) : candidates.length === 0 ? (
         <div className="wrapup-empty">
-          No open note drafts. Write your {rubric.noteType.toLowerCase()} in the
-          Notes activity (New Note), then come back here to submit it for
-          feedback.
+          Nothing to score yet. Write your {rubric.noteType.toLowerCase()} in the
+          Notes activity (New Note), then Sign it — or come back here with the
+          draft still open.
         </div>
       ) : (
         <div className="wrapup-card">
-          <div className="wrapup-card-head">Submit a draft for feedback</div>
+          <div className="wrapup-card-head">Submit a note for feedback</div>
           <div className="wrapup-card-body">
-            {editors.map((draft) => {
-              const words = wordCount(htmlToPlainText(draft.body));
-              return (
-                <label key={draft.id} className="wrapup-draft-row">
-                  <input
-                    type="radio"
-                    name="wrapup-draft"
-                    checked={selected?.id === draft.id}
-                    onChange={() => setSelectedId(draft.id)}
-                  />
-                  <span className="wrapup-draft-name">{draft.noteType}</span>
-                  <span className="wrapup-draft-meta">
-                    {draft.service} · {words} words
-                  </span>
-                </label>
-              );
-            })}
+            {candidates.map((candidate) => (
+              <label key={candidate.key} className="wrapup-draft-row">
+                <input
+                  type="radio"
+                  name="wrapup-draft"
+                  checked={selected?.key === candidate.key}
+                  onChange={() => setSelectedKey(candidate.key)}
+                />
+                <span className="wrapup-draft-name">{candidate.label}</span>
+                <span className="wrapup-draft-meta">{candidate.meta}</span>
+              </label>
+            ))}
             <button
               className="wrapup-submit"
               onClick={submit}
-              disabled={!selected || wordCount(htmlToPlainText(selected.body)) === 0}
+              disabled={!selected || wordCount(selected.text) === 0}
             >
               Submit for feedback
             </button>

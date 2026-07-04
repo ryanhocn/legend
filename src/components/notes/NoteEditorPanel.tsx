@@ -13,6 +13,8 @@ export function NoteEditorPanel({
   onClose,
   onChangeBody,
   onChangeNoteType,
+  onSign,
+  onPend,
 }: {
   editors: NoteDraft[];
   activeId: string | null;
@@ -20,6 +22,8 @@ export function NoteEditorPanel({
   onClose: (id: string) => void;
   onChangeBody: (id: string, body: string) => void;
   onChangeNoteType: (id: string, noteType: string) => void;
+  onSign: (id: string) => void;
+  onPend: (id: string) => void;
 }) {
   const active = editors.find((draft) => draft.id === activeId) ?? null;
 
@@ -58,7 +62,8 @@ export function NoteEditorPanel({
           value={active.body}
           onChangeNoteType={(noteType) => onChangeNoteType(active.id, noteType)}
           onChange={(body) => onChangeBody(active.id, body)}
-          onClose={() => onClose(active.id)}
+          onSign={() => onSign(active.id)}
+          onPend={() => onPend(active.id)}
         />
       )}
     </div>

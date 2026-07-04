@@ -1,4 +1,4 @@
-import { UserRound } from "lucide-react";
+import { CircleAlert, UserRound } from "lucide-react";
 import type { Note } from "../../types";
 import { formatClinician } from "../../lib/clinician";
 
@@ -53,7 +53,16 @@ export function NoteList({
               <span className="note-row-author">
                 {formatClinician(note.author, note.credential)}
               </span>
-              <span className="note-row-type">{note.noteType}</span>
+              <span className="note-row-type">
+                {note.urgent && (
+                  <CircleAlert
+                    size={13}
+                    className="note-urgent-mark"
+                    aria-label="Time-critical"
+                  />
+                )}
+                {note.noteType}
+              </span>
             </div>
             <div className="note-row-role">{note.authorRole}</div>
             <div className="note-row-meta">
