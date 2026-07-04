@@ -30,6 +30,12 @@ It recreates the parts of an electronic health record a student actually has to 
 - **A worked teaching case** — an atypical cholangitis presentation (epigastric rather than RUQ pain, obstructive LFTs, a penicillin-allergy prescribing catch) designed to punish anchoring.
 - **Synthetic-only by design** — simulation disclaimers are built into the report banners, not bolted on.
 
+## Roadmap
+
+- **Note feedback (next).** Score a submitted note against a per-case rubric: required findings, unsafe omissions (this case hides a penicillin-allergy prescribing catch), section structure, and a conciseness band. The axes operationalize a subset of PDQI-9, the validated nine-dimension note-quality instrument (Stetson et al., 2012). The model note is revealed after scoring, not before, so it teaches rather than gets paraphrased.
+- **LLM judge.** The rubric schema is judge-agnostic: deterministic matching ships first, and a Claude-based judge can later score the paraphrase-heavy items without a rewrite.
+- **More cases.** Once a case bundles chart data, a rubric, and a model note, new cases are data-only additions.
+
 ## Tech stack
 
 React 19 + TypeScript, built with Vite. Charts via Recharts, icons via lucide-react, resizable panes via react-resizable-panels. No backend: all case data is typed and static, so there is nothing to provision and no data to leak.
