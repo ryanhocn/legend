@@ -12,10 +12,14 @@ Branch / worktree: main
 - Note-feedback loop specced in SPEC.md (rubric checklist scoring, PDQI-9 framing,
   deterministic matcher first, LLM judge later).
 - README roadmap section added (cites PDQI-9 / Stetson 2012 for the hackathon story).
+- Phase 1 (scoring engine): rubric types in types.ts, src/lib/noteText.ts +
+  src/lib/rubric.ts, vitest wired up (`npm test`), 22 tests green, TDD (watched red
+  first). tsc green; lint has only the pre-existing StickyNotePopup error.
 
 ## In flight
-- Phase 1 of SPEC.md: scoring engine (types, src/lib/noteText.ts, src/lib/rubric.ts,
-  vitest setup, tests first).
+- Phase 2 of SPEC.md: author cholangitis001 rubric + model note
+  (src/data/patients/cholangitis001/rubric.ts), content derived from documents.ts /
+  encounters.ts. Then Phase 3: Wrap-up UI.
 
 ## Blocked / decisions needed
 - None.

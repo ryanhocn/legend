@@ -202,3 +202,75 @@ export type NoteDraft = {
   service: string;
   body: string;
 };
+
+/** PDQI-9 note-quality dimensions (Stetson et al., 2012). */
+export type PdqiDimension =
+  | "up-to-date"
+  | "accurate"
+  | "thorough"
+  | "useful"
+  | "organized"
+  | "comprehensible"
+  | "succinct"
+  | "synthesized"
+  | "internally consistent";
+
+/**
+ * One way to satisfy a rubric item: AND over groups, OR over the synonym
+ * phrases within a group. E.g. [["bilirubin"], ["raised", "elevated", "high"]]
+ * needs "bilirubin" plus any of the qualifiers somewhere in the note.
+ */
+export type RubricTrigger = string[][];
+
+export type RubricItem = {
+  id: string;
+  /** Shown in feedback, e.g. "Recognizes the obstructive LFT pattern". */
+  label: string;
+  category: "findings" | "assessment" | "plan" | "safety";
+  /** Points awarded when matched. */
+  weight: number;
+  /** A missed critical item is an unsafe omission, not just lost points. */
+  critical?: boolean;
+  /** Item matches if ANY trigger matches. */
+  triggers: RubricTrigger[];
+  /** Teaching text shown after scoring (why it matters, where it was in the chart). */
+  explanation: string;
+  /** PDQI-9 dimensions this item evidences. */
+  pdqi: PdqiDimension[];
+};
+
+export type CaseRubric = {
+  caseId: string;
+  /** Which draft type this rubric applies to, e.g. "Progress Notes". */
+  noteType: string;
+  items: RubricItem[];
+  /** Conciseness band: no penalty up to max, then 1 point per 25 words, capped at 10. */
+  wordBand: { target: number; max: number };
+  /** Section headers scored as "organized": OR within a group, one group per expected section. */
+  sections: string[][];
+  /** Consultant-standard note, revealed only after scoring. Plain text. */
+  modelNote: string;
+};
+
+export type RubricItemResult = {
+  item: RubricItem;
+  matched: boolean;
+};
+
+export type RubricResult = {
+  items: RubricItemResult[];
+  /** Sum of matched item weights / sum of all weights. */
+  earned: number;
+  possible: number;
+  /** Critical items that were missed (unsafe omissions). */
+  criticalMisses: RubricItem[];
+  words: number;
+  wordPenalty: number;
+  /** First synonym of each section group that was found, in rubric order. */
+  sectionsFound: string[];
+  sectionsExpected: number;
+  /** Per-dimension matched/total item counts. */
+  pdqi: Partial<Record<PdqiDimension, { matched: number; total: number }>>;
+  /** earned - wordPenalty, floored at 0. */
+  total: number;
+};
