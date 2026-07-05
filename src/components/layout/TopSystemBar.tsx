@@ -1,4 +1,4 @@
-import { Bell, Menu, Search, StickyNote } from "lucide-react";
+import { Bell, Menu, StickyNote } from "lucide-react";
 import { signOut } from "../../lib/session";
 import type { UserProfile } from "../../types";
 
@@ -24,11 +24,6 @@ export function TopSystemBar({
         <span className="environment-text">
           TRAINING — REHAB / ORTHO / GENERAL SURGERY — AMELIA HART
         </span>
-      </div>
-
-      <div className="global-search">
-        <Search size={15} />
-        <span>Search synthetic chart...</span>
       </div>
 
       <div className="top-right">

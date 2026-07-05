@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Copy,
   FilePlus2,
@@ -9,21 +10,43 @@ import {
 import type { Note } from "../../types";
 import { formatClinician } from "../../lib/clinician";
 import { reflowNoteBody } from "../../lib/reflow";
+import { SKIP_DELETE_CONFIRM_KEY } from "../../lib/session";
 import patient from "../../data/patient.json";
 
 /**
  * Read-only preview of the selected note, rendered as an Epic-style letter
  * page (hospital header, body, disclaimer footer). Used both in the notes
  * browser split and the right-rail document viewer; pass `onClose` to show a
- * close control.
+ * close control and `onDelete` (user-authored notes only) to arm Delete.
  */
 export function NotePreview({
   note,
   onClose,
+  onDelete,
 }: {
   note: Note | null;
   onClose?: () => void;
+  onDelete?: () => void;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [skipChecked, setSkipChecked] = useState(false);
+
+  function requestDelete() {
+    if (!onDelete) return;
+    if (window.localStorage.getItem(SKIP_DELETE_CONFIRM_KEY) === "1") {
+      onDelete();
+      return;
+    }
+    setSkipChecked(false);
+    setConfirmOpen(true);
+  }
+
+  function confirmDelete() {
+    if (skipChecked) window.localStorage.setItem(SKIP_DELETE_CONFIRM_KEY, "1");
+    setConfirmOpen(false);
+    onDelete?.();
+  }
+
   if (!note) {
     return (
       <div className="note-preview note-preview-empty">
@@ -52,7 +75,12 @@ export function NotePreview({
           <Printer size={13} />
           Print
         </button>
-        <button className="danger">
+        <button
+          className="danger"
+          disabled={!onDelete}
+          title={onDelete ? "Delete this note" : "Only your own notes can be deleted"}
+          onClick={requestDelete}
+        >
           <Trash2 size={13} />
           Delete
         </button>
@@ -72,7 +100,7 @@ export function NotePreview({
             <div className="note-page-brand">
               <span className="brand-logo">L</span>
               <div>
-                <div className="note-page-hospital">Legend Teaching Hospital</div>
+                <div className="note-page-hospital">Mount Verdant Hospital</div>
                 <div className="note-page-dept">{note.service}</div>
               </div>
             </div>
@@ -135,6 +163,31 @@ export function NotePreview({
           </div>
         </div>
       </div>
+
+      {confirmOpen && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm-card">
+            <p>
+              Delete <strong>{note.noteType}</strong>? This cannot be undone.
+            </p>
+            <label className="confirm-skip">
+              <input
+                type="checkbox"
+                checked={skipChecked}
+                onChange={(event) => setSkipChecked(event.target.checked)}
+              />
+              Always ignore this message
+            </label>
+            <div className="confirm-actions">
+              <button onClick={() => setConfirmOpen(false)}>Cancel</button>
+              <button className="danger" onClick={confirmDelete}>
+                <Trash2 size={13} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

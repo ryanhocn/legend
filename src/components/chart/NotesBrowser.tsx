@@ -63,9 +63,11 @@ function searchNotes(notes: Note[], query: string): Note[] {
 export function NotesBrowser({
   notes,
   onNewNote,
+  onDeleteNote,
 }: {
   notes: Note[];
   onNewNote: () => void;
+  onDeleteNote: (id: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>("All Notes");
   const [query, setQuery] = useState("");
@@ -238,7 +240,19 @@ export function NotesBrowser({
                   ))}
                 </div>
               )}
-              <NotePreview note={activeNote} />
+              <NotePreview
+                note={activeNote}
+                // Only user-authored notes are deletable; deleting also
+                // closes the note's preview tab.
+                onDelete={
+                  activeNote?.id.startsWith("user-note-")
+                    ? () => {
+                        closePreview(activeNote.id);
+                        onDeleteNote(activeNote.id);
+                      }
+                    : undefined
+                }
+              />
             </div>
           </Panel>
         </PanelGroup>

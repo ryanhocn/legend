@@ -577,7 +577,7 @@ Patient education: ***safety-net re recurrent biliary pain / jaundice***
     author: "Green, Annabel, MD (Attending)",
     signedAt: "Today 07:40",
     body: `ADMISSION  [Current]
-Today 07:40 — present       Legend Teaching Hospital
+Today 07:40 — present       Mount Verdant Hospital
 Admitting / Attending: Green, Annabel, MD — General Surgery
 
 PRINCIPAL PROBLEM:
@@ -861,7 +861,7 @@ if fever, jaundice, persistent or severe pain. GP follow-up advised.`,
     received: "16/06/2026 06:18",
     reportedAt: "16/06/2026 06:50",
     orderedBy: "Patel, Anita, MD (Emergency Medicine)",
-    resultingLab: "LegendCare Clinical Laboratory, Legend Teaching Hospital",
+    resultingLab: "LegendCare Clinical Laboratory, Mount Verdant Hospital",
     rows: admissionLabRows,
   },
   {
@@ -875,7 +875,7 @@ if fever, jaundice, persistent or severe pain. GP follow-up advised.`,
     received: "13/01/2026 09:25",
     reportedAt: "13/01/2026 09:30",
     orderedBy: "Shah, Rajesh, MD (Primary Care)",
-    resultingLab: "LegendCare Clinical Laboratory, Legend Teaching Hospital",
+    resultingLab: "LegendCare Clinical Laboratory, Mount Verdant Hospital",
     rows: [
       { test: "HbA1c", value: "68", units: "mmol/mol", range: "20–41", flag: "H" },
       { test: "Total cholesterol", value: "6.4", units: "mmol/L", range: "<5.0", flag: "H" },

@@ -35,6 +35,7 @@ export function ChartReview({
   selectedDocId,
   onSelectDocument,
   onNewNote,
+  onDeleteNote,
 }: {
   chartTab: ChartTab;
   setChartTab: (tab: ChartTab) => void;
@@ -44,6 +45,7 @@ export function ChartReview({
   selectedDocId: string | null;
   onSelectDocument: (docId: string) => void;
   onNewNote: () => void;
+  onDeleteNote: (id: string) => void;
 }) {
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [filters, setFilters] = useState<Set<FilterKey>>(new Set());
@@ -126,7 +128,9 @@ export function ChartReview({
             onSelectDocument={onSelectDocument}
           />
         )}
-        {chartTab === "notes" && <NotesBrowser notes={notes} onNewNote={onNewNote} />}
+        {chartTab === "notes" && (
+          <NotesBrowser notes={notes} onNewNote={onNewNote} onDeleteNote={onDeleteNote} />
+        )}
         {chartTab === "labs" && <LabsPanel />}
         {chartTab !== "encounters" && chartTab !== "notes" && chartTab !== "labs" && (
           <GenericChartTab label={chartTabs.find((t) => t.key === chartTab)?.label ?? ""} />

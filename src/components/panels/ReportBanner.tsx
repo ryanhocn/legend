@@ -21,7 +21,7 @@ export function ReportBanner({
         <div className="report-banner-org">
           <div className="report-banner-brand">LegendCare</div>
           <div className="report-banner-sub">
-            Legend Teaching Hospital · Department of Clinical Laboratories
+            Mount Verdant Hospital · Department of Clinical Laboratories
           </div>
           <div className="report-banner-line">{reportType}</div>
           <div className="report-banner-line">Report Date/Time: {reportedAt}</div>

@@ -117,6 +117,11 @@ function App() {
     setEditors((prev) => prev.filter((draft) => draft.id !== id));
   }
 
+  function deleteUserNote(id: string) {
+    setStoredUserNotes(JSON.stringify(userNotes.filter((note) => note.id !== id)));
+    if (selectedDocId === id) setSelectedDocId(null);
+  }
+
   // Sign publishes the draft as a signed note and opens Wrap-Up feedback on
   // it; Pend files it as an incomplete note. Both remove the draft tab.
   function finishDraft(id: string, status: NoteStatus) {
@@ -204,13 +209,18 @@ function App() {
                     selectedDocId={selectedDocId}
                     onSelectDocument={setSelectedDocId}
                     onNewNote={openNewNote}
+                    onDeleteNote={deleteUserNote}
                   />
                 )}
 
                 {mainTab === "results" && <ResultsModule />}
 
                 {mainTab === "notes" && (
-                  <NotesBrowser notes={allNotes} onNewNote={openNewNote} />
+                  <NotesBrowser
+                    notes={allNotes}
+                    onNewNote={openNewNote}
+                    onDeleteNote={deleteUserNote}
+                  />
                 )}
 
                 {mainTab === "wrapup" && (
