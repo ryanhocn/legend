@@ -4,7 +4,8 @@
 
 Last updated: 2026-07-05
 Branch / worktree: main
-Latest session commit range: 47ee20b..54a1ea1 (tab restructure + doc reconcile)
+Latest session: Cloudflare Workers deploy (live at https://legend.ryanho1218.workers.dev)
+Prior session commit range: 47ee20b..54a1ea1 (tab restructure + doc reconcile)
 Prior session: cce42a4..dc9f29b (note-feedback loop + prototype build)
 
 ## Done
@@ -26,17 +27,21 @@ Prior session: cce42a4..dc9f29b (note-feedback loop + prototype build)
   (LabsPanel.tsx deleted); shared LetterPage extracted so note AND report previews use
   the same Epic stationery; preview tabs narrower + freeze-on-close.
 - Handoff doc reconciles (this session + prior): README, SPEC, CLAUDE.md match the code.
+- Live demo deployed to Cloudflare **Workers static assets** (not Pages; Pages is legacy
+  for new projects): https://legend.ryanho1218.workers.dev. Config in `wrangler.jsonc`
+  (`not_found_handling: "single-page-application"` handles deep links). Redeploy:
+  `npm run build` then `npx wrangler deploy`. Auth via `npx wrangler login`
+  (ryanho1218@gmail.com account).
 
 ## In flight
 - Nothing mid-change; the prototype loop is demo-ready.
 
 ## Next concrete step
-- Deploy a live demo to Cloudflare Pages. It's a static Vite SPA (no backend; all
-  state is localStorage), so: build with `npm run build` (outputs `dist/`), then
-  Cloudflare Pages with build command `npm run build`, output dir `dist`. Add an SPA
-  fallback (redirect `/*` -> `/index.html`) if deep links 404. No env vars or secrets.
-  A prior "deploy docs (Cloudflare Pages)" commit was made then dropped in an
-  accidental reset (see prior handoff); re-author fresh.
+- Per the roadmap (see memory [[legend-roadmap]]): more cases (data-only), then
+  simulated attending feedback as text. The attending-feedback stage is the first
+  that needs a server-side API key; the Worker deploy was chosen so an API-proxy
+  endpoint can be added to `wrangler.jsonc` + a small `main` script later without
+  replatforming.
 
 ## Ideas / later
 - Persist open (unsigned) drafts; only signed/pended notes survive reload today.
