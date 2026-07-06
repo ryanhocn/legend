@@ -1,8 +1,9 @@
 # Spec: Multi-case foundation (registry + patient switching)
 
-Status: IN PROGRESS (2026-07-06). Previous spec (note feedback loop): DONE, shipped
-and verified; its design record lives in git history (SPEC.md @ 8fff625) and its
-decisions are folded into CLAUDE.md.
+Status: DONE (2026-07-06). All three phases shipped and browser-verified
+(registry refactor 8d694ea, patient switching dec89c0, CASE_AUTHORING.md with
+this commit). Previous spec (note feedback loop): DONE; its design record lives
+in git history (SPEC.md @ 8fff625) and its decisions are folded into CLAUDE.md.
 
 ## Goal
 

@@ -2,11 +2,11 @@
 
 > Living state. Update at the end of every working block so a fresh session can resume from here after `/clear`.
 
-Last updated: 2026-07-05
+Last updated: 2026-07-06
 Branch / worktree: main
-Latest session: Cloudflare Workers deploy (live at https://legend.ryanho06.workers.dev)
-Prior session commit range: 47ee20b..54a1ea1 (tab restructure + doc reconcile)
-Prior session: cce42a4..dc9f29b (note-feedback loop + prototype build)
+Latest session: multi-case foundation (8d694ea registry, dec89c0 patient switching,
+CASE_AUTHORING.md). Prior: Cloudflare deploy + README + mobile gate (3b04aeb..70c80ca).
+Earlier ranges: 47ee20b..54a1ea1 (tab restructure), cce42a4..dc9f29b (note feedback).
 
 ## Done
 - Restored the lost Chart Review + Results work from Claude Code file-history after
@@ -31,16 +31,31 @@ Prior session: cce42a4..dc9f29b (note-feedback loop + prototype build)
   for new projects): https://legend.ryanho06.workers.dev. Config in `wrangler.jsonc`
   (`not_found_handling: "single-page-application"` handles deep links). Redeploy:
   `npm run build` then `npx wrangler deploy`. Auth via `npx wrangler login`.
+- Mobile gate (70c80ca): narrow-portrait viewports get a "rotate or use a laptop"
+  card (RotateGate); sign-in placeholders no longer suggest the patient's own name.
+- Multi-case foundation, all 3 SPEC phases shipped + browser-verified:
+  - Registry refactor (8d694ea): patient.json/summary/bloods moved into the case
+    folder; `CaseBundle` registry (`data/patients/index.ts`); `CaseContext`/`useCase`
+    replaces static case imports; `patient.caseId` renamed `mrn`.
+  - Patient switching (dec89c0): Epic-style chart tabs below the top bar
+    (PatientTabBar, freeze-on-close), full-screen Patient Lists activity grouped by
+    specialty (PatientListPage, hamburger opens it, last-tab-close returns to it),
+    per-case `CaseUiState` map so drafts/tabs survive switches, sign-out sweeps all
+    `legend*` keys except the delete-confirm preference.
+  - CASE_AUTHORING.md: the Cowork-facing contract for generating new cases
+    (folder layout, type rules, rubric + required rubric.test.ts, registry hookup,
+    acceptance checklist).
 
 ## In flight
-- Nothing mid-change; the prototype loop is demo-ready.
+- Nothing mid-change; the multi-case demo loop is ready.
 
 ## Next concrete step
-- Per the roadmap (see memory [[legend-roadmap]]): more cases (data-only), then
-  simulated attending feedback as text. The attending-feedback stage is the first
-  that needs a server-side API key; the Worker deploy was chosen so an API-proxy
-  endpoint can be added to `wrangler.jsonc` + a small `main` script later without
-  replatforming.
+- Cowork generates additional cases against CASE_AUTHORING.md (a couple per
+  specialty). Each is a folder + registry entry; acceptance = the checklist at the
+  bottom of that doc. Then, per the roadmap (memory [[legend-roadmap]]): simulated
+  attending feedback as text — first stage needing a server-side API key; the
+  Worker deploy was chosen so an API-proxy endpoint can be added to
+  `wrangler.jsonc` + a small `main` script without replatforming.
 
 ## Ideas / later
 - Persist open (unsigned) drafts; only signed/pended notes survive reload today.
