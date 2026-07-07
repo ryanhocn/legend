@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bold, CheckCircle2, Italic, Mic, Share2, Underline } from "lucide-react";
+import { useCase } from "../../context/CaseContext";
+import { matchPhrases, type SmartPhrase } from "../../lib/smarttext";
 
 const NOTE_TYPES = [
   "Progress Note",
@@ -75,12 +77,18 @@ export function NoteEditor({
   });
   const [fontSize, setFontSize] = useState(11);
   const [words, setWords] = useState(0);
+  const { patient, encounters } = useCase();
+  const [stQuery, setStQuery] = useState("");
+  const [stIndex, setStIndex] = useState(0);
+  const [wildcards, setWildcards] = useState(0);
+  const stMatches = matchPhrases(stQuery);
 
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
     el.innerHTML = value;
     setWords(countWords(el.textContent ?? ""));
+    setWildcards(el.querySelectorAll(".st-wildcard").length);
     // Seed once on mount; the value prop is intentionally not a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -127,6 +135,7 @@ export function NoteEditor({
     if (!el) return;
     onChange(el.innerHTML);
     setWords(countWords(el.textContent ?? ""));
+    setWildcards(el.querySelectorAll(".st-wildcard").length);
   }
 
   function applyFormat(command: "bold" | "italic" | "underline") {
@@ -170,7 +179,80 @@ export function NoteEditor({
     pushChange();
   }
 
+  // Select a whole wildcard chip so the next keystroke replaces it outright.
+  function selectChip(chip: Element) {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNode(chip);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    savedRange.current = range.cloneRange();
+    (chip as HTMLElement).scrollIntoView({ block: "nearest" });
+  }
+
+  /** The next/previous wildcard chip from the caret, wrapping around. */
+  function findChip(forward: boolean): Element | null {
+    const el = editorRef.current;
+    if (!el) return null;
+    const chips = Array.from(el.querySelectorAll(".st-wildcard"));
+    if (chips.length === 0) return null;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !el.contains(sel.anchorNode)) {
+      return forward ? chips[0] : chips[chips.length - 1];
+    }
+    const caret = sel.getRangeAt(0);
+    const isAfterCaret = (chip: Element) => {
+      const range = document.createRange();
+      range.selectNode(chip);
+      return range.compareBoundaryPoints(Range.START_TO_START, caret) > 0;
+    };
+    if (forward) return chips.find(isAfterCaret) ?? chips[0];
+    // Backward: last chip before the caret, excluding a currently selected chip.
+    const before = chips.filter(
+      (chip) => !isAfterCaret(chip) && !caret.intersectsNode(chip),
+    );
+    return before[before.length - 1] ?? chips[chips.length - 1];
+  }
+
+  // Splice the template at the last saved caret (end of note if none), then
+  // jump to its first wildcard so the trainee starts filling immediately.
+  function insertPhrase(phrase: SmartPhrase) {
+    const el = editorRef.current;
+    if (!el) return;
+    const admissionDate = encounters.find((e) => e.admission)?.date ?? "";
+    const html = phrase.build(patient, admissionDate);
+    let range = savedRange.current;
+    if (!range || !el.contains(range.commonAncestorContainer)) {
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
+    range.deleteContents();
+    const fragment = document.createRange().createContextualFragment(html);
+    const firstChip = fragment.querySelector(".st-wildcard");
+    range.insertNode(fragment);
+    setStQuery("");
+    setStIndex(0);
+    if (firstChip) {
+      selectChip(firstChip);
+    } else {
+      el.focus();
+    }
+    pushChange();
+  }
+
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Tab") {
+      const chip = findChip(!event.shiftKey);
+      if (chip) {
+        event.preventDefault();
+        selectChip(chip);
+        return;
+      }
+    }
     if ((event.ctrlKey || event.metaKey) && !event.altKey) {
       const key = event.key.toLowerCase();
       const command =
@@ -224,7 +306,52 @@ export function NoteEditor({
         >
           <Underline size={13} />
         </FormatButton>
-        <input className="note-editor-smarttext" placeholder="Insert SmartText" />
+        <div className="note-editor-smarttext-wrap">
+          <input
+            className="note-editor-smarttext"
+            placeholder="Insert SmartText"
+            aria-label="Insert SmartText"
+            value={stQuery}
+            onChange={(event) => {
+              setStQuery(event.target.value);
+              setStIndex(0);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setStIndex((i) => Math.min(i + 1, stMatches.length - 1));
+              } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setStIndex((i) => Math.max(i - 1, 0));
+              } else if (event.key === "Enter" && stMatches[stIndex]) {
+                event.preventDefault();
+                insertPhrase(stMatches[stIndex]);
+              } else if (event.key === "Escape") {
+                setStQuery("");
+                setStIndex(0);
+              }
+            }}
+          />
+          {stMatches.length > 0 && (
+            <ul className="st-suggest" role="listbox">
+              {stMatches.map((phrase, index) => (
+                <li key={phrase.id}>
+                  <button
+                    role="option"
+                    aria-selected={index === stIndex}
+                    className={index === stIndex ? "active" : undefined}
+                    // Keep the editor's saved caret; don't move focus on click.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertPhrase(phrase)}
+                  >
+                    <b>{phrase.id}</b>
+                    <span>{phrase.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <button aria-label="Dictate">
           <Mic size={13} />
         </button>
@@ -243,6 +370,10 @@ export function NoteEditor({
         onKeyDown={handleKeyDown}
         onKeyUp={syncState}
         onMouseUp={syncState}
+        onClick={(event) => {
+          const chip = (event.target as HTMLElement).closest(".st-wildcard");
+          if (chip) selectChip(chip);
+        }}
       />
 
       <div className="note-editor-footer">
@@ -257,7 +388,12 @@ export function NoteEditor({
           <Share2 size={13} />
           Share
         </button>
-        <button className="green-button" onClick={onSign} disabled={words === 0}>
+        <button
+          className="green-button"
+          onClick={onSign}
+          disabled={words === 0 || wildcards > 0}
+          title={wildcards > 0 ? "Complete all *** fields before signing" : undefined}
+        >
           <CheckCircle2 size={13} />
           Sign
         </button>

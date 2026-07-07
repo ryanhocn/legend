@@ -1121,12 +1121,62 @@ button {
   background: #f8fae8;
 }
 
-.note-editor-smarttext {
+.note-editor-smarttext-wrap {
   flex: 1;
   min-width: 0;
+  position: relative;
+}
+
+.note-editor-smarttext {
+  width: 100%;
   height: 20px;
   border: 1px solid #95a17f;
   padding: 0 6px;
+}
+
+.st-suggest {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #899873;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Beat the generic .note-editor-format button pill styling. */
+.st-suggest button {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  height: auto;
+  border: none;
+  background: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.st-suggest button.active,
+.st-suggest button:hover {
+  background: #cfe3f5;
+}
+
+/* Unfilled template field: the pink boxed *** chip from the Epic reference. */
+.st-wildcard {
+  display: inline-block;
+  background: #f6c8e5;
+  border: 1px solid #c98ab2;
+  border-radius: 2px;
+  padding: 0 3px;
+  margin: 0 1px;
+  font-weight: bold;
+  line-height: 1.2;
+  cursor: pointer;
 }
 
 .note-editor-textarea {
