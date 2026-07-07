@@ -2600,6 +2600,8 @@ button {
   border-collapse: collapse;
   background: #fff;
   border: 1px solid var(--line);
+  /* Widths come from the colgroup, so columns stay put across list switches. */
+  table-layout: fixed;
 }
 
 .patient-list-table th {

@@ -61,6 +61,16 @@ export function PatientListPage({
         </div>
 
         <table className="patient-list-table">
+          {/* Fixed layout + explicit widths so columns don't reflow when
+              switching lists (only Handoff flexes). */}
+          <colgroup>
+            <col style={{ width: 90 }} />
+            <col style={{ width: 190 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 80 }} />
+            <col />
+            <col style={{ width: 270 }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Bed</th>
