@@ -60,6 +60,7 @@ export function NoteEditorPanel({
           noteType={active.noteType}
           service={active.service}
           value={active.body}
+          mode={active.mode}
           onChangeNoteType={(noteType) => onChangeNoteType(active.id, noteType)}
           onChange={(body) => onChangeBody(active.id, body)}
           onSign={() => onSign(active.id)}

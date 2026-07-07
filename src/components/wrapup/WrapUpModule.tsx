@@ -41,15 +41,17 @@ export function WrapUpModule({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const candidates: Candidate[] = [
-    ...editors.map((draft) => {
-      const text = htmlToPlainText(draft.body);
-      return {
-        key: draft.id,
-        label: `${draft.noteType} (open draft)`,
-        meta: `${draft.service} · ${wordCount(text)} words`,
-        text,
-      };
-    }),
+    ...editors
+      .filter((draft) => draft.mode !== "addendum")
+      .map((draft) => {
+        const text = htmlToPlainText(draft.body);
+        return {
+          key: draft.id,
+          label: `${draft.noteType} (open draft)`,
+          meta: `${draft.service} · ${wordCount(text)} words`,
+          text,
+        };
+      }),
     ...userNotes
       .filter((note) => note.status === "signed")
       .map((note) => ({

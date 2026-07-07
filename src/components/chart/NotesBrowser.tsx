@@ -64,10 +64,16 @@ export function NotesBrowser({
   notes,
   onNewNote,
   onDeleteNote,
+  onEditNote,
+  onAddendumNote,
+  ownNote,
 }: {
   notes: Note[];
   onNewNote: () => void;
   onDeleteNote: (id: string) => void;
+  onEditNote: (note: Note) => void;
+  onAddendumNote: (note: Note) => void;
+  ownNote: (note: Note) => boolean;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>("All Notes");
   const [query, setQuery] = useState("");
@@ -273,6 +279,18 @@ export function NotesBrowser({
                         closePreview(activeNote.id);
                         onDeleteNote(activeNote.id);
                       }
+                    : undefined
+                }
+                onEdit={
+                  activeNote &&
+                  activeNote.status === "incomplete" &&
+                  activeNote.id.startsWith("user-note-")
+                    ? () => onEditNote(activeNote)
+                    : undefined
+                }
+                onAddendum={
+                  activeNote && activeNote.status !== "incomplete" && ownNote(activeNote)
+                    ? () => onAddendumNote(activeNote)
                     : undefined
                 }
               />

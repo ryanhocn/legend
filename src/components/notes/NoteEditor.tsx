@@ -53,6 +53,7 @@ export function NoteEditor({
   noteType,
   service,
   value,
+  mode,
   onChangeNoteType,
   onChange,
   onSign,
@@ -61,6 +62,7 @@ export function NoteEditor({
   noteType: string;
   service: string;
   value: string;
+  mode?: "edit" | "addendum";
   onChangeNoteType: (noteType: string) => void;
   onChange: (value: string) => void;
   onSign: () => void;
@@ -268,15 +270,19 @@ export function NoteEditor({
     <div className="note-editor-content">
       <div className="note-editor-titlebar">
         <div className="note-editor-meta">
-          <select
-            value={noteType}
-            aria-label="Note type"
-            onChange={(event) => onChangeNoteType(event.target.value)}
-          >
-            {NOTE_TYPES.map((type) => (
-              <option key={type}>{type}</option>
-            ))}
-          </select>
+          {mode === "addendum" ? (
+            <span className="note-editor-fixed-type">Addendum</span>
+          ) : (
+            <select
+              value={noteType}
+              aria-label="Note type"
+              onChange={(event) => onChangeNoteType(event.target.value)}
+            >
+              {NOTE_TYPES.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
+            </select>
+          )}
           <span>{service} · Today</span>
         </div>
       </div>
@@ -381,9 +387,11 @@ export function NoteEditor({
         <div className="toolbar-spacer" />
         {/* Pend files the draft as an incomplete note; Sign publishes it and
             opens Wrap-Up feedback. Both disabled while the note is empty. */}
-        <button onClick={onPend} disabled={words === 0}>
-          Pend
-        </button>
+        {mode !== "addendum" && (
+          <button onClick={onPend} disabled={words === 0}>
+            Pend
+          </button>
+        )}
         <button>
           <Share2 size={13} />
           Share

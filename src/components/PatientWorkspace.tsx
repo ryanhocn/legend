@@ -21,10 +21,17 @@ import { useCase } from "../context/CaseContext";
 import { mainTabs } from "../data/tabs";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { htmlToPlainText, wordCount } from "../lib/noteText";
-import { userNotesKey } from "../lib/session";
-import { buildUserNote } from "../lib/userNotes";
+import { addendaKey, userNotesKey } from "../lib/session";
+import {
+  appendAddendum,
+  buildAddendumBlock,
+  buildUserNote,
+  isOwnNote,
+  refileUserNote,
+} from "../lib/userNotes";
+import { plainTextToEditorHtml } from "../lib/smarttext";
 import { saveWrapupAttempt } from "../lib/wrapupAttempt";
-import type { CaseUiState, ClinicalNote, NoteStatus, UserProfile } from "../types";
+import type { CaseUiState, ClinicalNote, Note, NoteStatus, UserProfile } from "../types";
 
 // Draft ids only need uniqueness within a session; module scope survives the
 // per-case remounts (the workspace is keyed by caseId).
@@ -36,6 +43,15 @@ function parseUserNotes(raw: string): ClinicalNote[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+function parseAddenda(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }
 
@@ -65,6 +81,11 @@ export function PatientWorkspace({
     "[]",
   );
   const userNotes = parseUserNotes(storedUserNotes);
+  const [storedAddenda, setStoredAddenda] = usePersistentState(
+    addendaKey(activeCase.id),
+    "{}",
+  );
+  const addenda = parseAddenda(storedAddenda);
   const rightRef = useRef<PanelImperativeHandle>(null);
   const [rightCollapsed, setRightCollapsed] = useState(false);
 
@@ -75,9 +96,18 @@ export function PatientWorkspace({
     else panel.collapse();
   }
 
-  // User-authored notes join the case content in every view.
-  const allDocuments = [...activeCase.documents, ...userNotes];
-  const allNotes = [...activeCase.notes, ...userNotes];
+  // User-authored notes join the case content in every view; runtime addenda
+  // overlay onto any note (static or user) by id, after any static addendum.
+  const withAddenda = <T extends ClinicalNote>(note: T): T =>
+    addenda[note.id]
+      ? { ...note, addendum: appendAddendum(note.addendum, addenda[note.id]) }
+      : note;
+  const mergedUserNotes = userNotes.map(withAddenda);
+  const allDocuments = [
+    ...activeCase.documents.map((doc) => (doc.kind === "note" ? withAddenda(doc) : doc)),
+    ...mergedUserNotes,
+  ];
+  const allNotes = [...activeCase.notes.map(withAddenda), ...mergedUserNotes];
 
   const selectedDocument = selectedDocId
     ? allDocuments.find((doc) => doc.id === selectedDocId) ?? null
@@ -101,6 +131,53 @@ export function PatientWorkspace({
     rightRef.current?.expand();
   }
 
+  const ownNote = (note: Note) => isOwnNote(note, user.hcpId, activeCase.playerHcpId);
+
+  // Reopen an incomplete user note as an editor draft; Sign/Pend re-files it in
+  // place. Focuses the existing tab if one is already open for this note.
+  function openEditDraft(note: Note) {
+    const existing = editors.find((d) => d.mode === "edit" && d.targetNoteId === note.id);
+    if (existing) {
+      onPatch({ activeEditorId: existing.id });
+      rightRef.current?.expand();
+      return;
+    }
+    draftSeq += 1;
+    const draft = {
+      id: `draft-${draftSeq}`,
+      noteType: note.noteType,
+      service: note.service,
+      body: plainTextToEditorHtml(note.body),
+      mode: "edit" as const,
+      targetNoteId: note.id,
+    };
+    onPatch({ editors: [...editors, draft], activeEditorId: draft.id });
+    rightRef.current?.expand();
+  }
+
+  // Open an empty addendum draft targeting a signed note you own.
+  function openAddendumDraft(note: Note) {
+    const existing = editors.find(
+      (d) => d.mode === "addendum" && d.targetNoteId === note.id,
+    );
+    if (existing) {
+      onPatch({ activeEditorId: existing.id });
+      rightRef.current?.expand();
+      return;
+    }
+    draftSeq += 1;
+    const draft = {
+      id: `draft-${draftSeq}`,
+      noteType: "Addendum",
+      service: note.service,
+      body: "",
+      mode: "addendum" as const,
+      targetNoteId: note.id,
+    };
+    onPatch({ editors: [...editors, draft], activeEditorId: draft.id });
+    rightRef.current?.expand();
+  }
+
   function closeEditor(id: string) {
     onPatch({ editors: editors.filter((draft) => draft.id !== id) });
   }
@@ -110,16 +187,39 @@ export function PatientWorkspace({
     if (selectedDocId === id) onPatch({ selectedDocId: null });
   }
 
-  // Sign publishes the draft as a signed note and opens Wrap-Up feedback on
-  // it; Pend files it as an incomplete note. Both remove the draft tab.
+  // Sign publishes the draft (or appends its addendum); Pend files it as an
+  // incomplete note. Edit drafts re-file their target in place; a deleted
+  // target degrades to filing as a new note. All paths remove the draft tab.
   function finishDraft(id: string, status: NoteStatus) {
     const draft = editors.find((d) => d.id === id);
     if (!draft) return;
     const text = htmlToPlainText(draft.body);
     if (wordCount(text) === 0) return;
-    const note = buildUserNote(draft, user, text, status, new Date());
-    setStoredUserNotes(JSON.stringify([...userNotes, note]));
     const remaining = editors.filter((d) => d.id !== id);
+
+    if (draft.mode === "addendum" && draft.targetNoteId) {
+      const block = buildAddendumBlock(user, text, new Date());
+      setStoredAddenda(
+        JSON.stringify({
+          ...addenda,
+          [draft.targetNoteId]: appendAddendum(addenda[draft.targetNoteId], block),
+        }),
+      );
+      onPatch({ editors: remaining });
+      return;
+    }
+
+    const target =
+      draft.mode === "edit" && draft.targetNoteId
+        ? userNotes.find((n) => n.id === draft.targetNoteId)
+        : undefined;
+    const note = target
+      ? refileUserNote(target, draft, text, status, new Date())
+      : buildUserNote(draft, user, text, status, new Date());
+    const nextNotes = target
+      ? userNotes.map((n) => (n.id === target.id ? note : n))
+      : [...userNotes, note];
+    setStoredUserNotes(JSON.stringify(nextNotes));
     if (status === "signed") {
       saveWrapupAttempt(activeCase.id, text);
       onPatch({ editors: remaining, wrapupOpen: true });
@@ -189,6 +289,9 @@ export function PatientWorkspace({
                     onSelectDocument={(id) => onPatch({ selectedDocId: id })}
                     onNewNote={openNewNote}
                     onDeleteNote={deleteUserNote}
+                    onEditNote={openEditDraft}
+                    onAddendumNote={openAddendumDraft}
+                    ownNote={ownNote}
                   />
                 )}
 
@@ -199,6 +302,9 @@ export function PatientWorkspace({
                     notes={allNotes}
                     onNewNote={openNewNote}
                     onDeleteNote={deleteUserNote}
+                    onEditNote={openEditDraft}
+                    onAddendumNote={openAddendumDraft}
+                    ownNote={ownNote}
                   />
                 )}
 

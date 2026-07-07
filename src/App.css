@@ -1105,6 +1105,16 @@ button {
   color: #6a5a00;
 }
 
+.note-editor-fixed-type {
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  border: 1px solid #899873;
+  background: #eef1de;
+  font-weight: bold;
+}
+
 .note-editor-format {
   flex: none;
   display: flex;

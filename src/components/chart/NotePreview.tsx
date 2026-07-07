@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Copy,
   FilePlus2,
+  PenLine,
   Printer,
   Stamp,
   Trash2,
@@ -17,16 +18,22 @@ import { LetterPage } from "../panels/LetterPage";
  * Read-only preview of the selected note, rendered as an Epic-style letter
  * page (hospital header, body, disclaimer footer). Used both in the notes
  * browser split and the right-rail document viewer; pass `onClose` to show a
- * close control and `onDelete` (user-authored notes only) to arm Delete.
+ * close control, `onDelete` (user-authored notes only) to arm Delete,
+ * `onEdit` to reopen an incomplete note as a draft, and `onAddendum` to open
+ * an addendum draft targeting this note.
  */
 export function NotePreview({
   note,
   onClose,
   onDelete,
+  onEdit,
+  onAddendum,
 }: {
   note: Note | null;
   onClose?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
+  onAddendum?: () => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [skipChecked, setSkipChecked] = useState(false);
@@ -59,10 +66,25 @@ export function NotePreview({
   return (
     <div className="note-preview">
       <div className="note-preview-toolbar">
-        <button>
-          <FilePlus2 size={13} />
-          Addendum
-        </button>
+        {note.status === "incomplete" && onEdit ? (
+          <button onClick={onEdit}>
+            <PenLine size={13} />
+            Edit
+          </button>
+        ) : (
+          <button
+            disabled={!onAddendum}
+            title={
+              onAddendum
+                ? "Append an addendum to this note"
+                : "Only your own notes can be addended"
+            }
+            onClick={onAddendum}
+          >
+            <FilePlus2 size={13} />
+            Addendum
+          </button>
+        )}
         <button>
           <Copy size={13} />
           Copy
