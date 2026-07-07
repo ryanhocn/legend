@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -65,7 +66,7 @@ export function StickyNotePopup({ onClose }: { onClose: () => void }) {
   const dragOffset = useRef<{ dx: number; dy: number } | null>(null);
   const stopDraggingRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     layoutRef.current = layout;
   }, [layout]);
 
@@ -103,12 +104,8 @@ export function StickyNotePopup({ onClose }: { onClose: () => void }) {
   };
 
   useEffect(() => () => {
-    const fn = stopDraggingRef.current;
-    if (fn) {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", fn);
-    }
-  }, [onPointerMove]);
+    stopDraggingRef.current?.();
+  }, []);
 
   // Capture CSS `resize: both` drags and persist the new size.
   useEffect(() => {
