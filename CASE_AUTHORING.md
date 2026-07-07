@@ -115,6 +115,17 @@ than for the chart itself.
   judgment and ownership: complex multi-problem post-takes, ceiling-of-care and
   end-of-life decisions, major post-intervention complications, cross-specialty
   conflict.
+- **Trigger hygiene (enforced by the build)**: the PROGRESS SmartText embeds the
+  case's real vitals line and every `bloods.ts` row (values, ranges, and flags
+  like "High", "Low", "High (mild)") into the note body. No rubric trigger may
+  be satisfiable by that pasted data alone — points are for interpretation, not
+  transcription. Never pair a test name with only its raw value or flag words
+  (`[["creatinine"], ["148"]]` leaks); require an interpretive token the
+  template cannot emit (`"baseline"`, `"rising"`, `"persistent"`, a diagnosis
+  word). Matching is note-global, so a word in ANY lab row's flag can combine
+  with a test name elsewhere. `src/data/patients/progress-autofill.test.ts`
+  runs this check against every registered case — `npm test` fails on a leaky
+  rubric.
 - **`rubric.test.ts` is required** and must at minimum mirror
   `cholangitis001/rubric.test.ts`:
   1. the model note matches every item (no misses, no critical misses),
