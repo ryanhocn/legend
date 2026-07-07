@@ -199,6 +199,17 @@ export type ClinicalDocument =
 export type Note = ClinicalNote;
 export type Report = ClinicalReport;
 
+/** Doctor seniority tiers; rank order fy < st3 < consultant. */
+export type Grade = "fy" | "st3" | "consultant";
+
+/** The note task a case expects; shown in the patient list. Signing a case
+ * above your grade triggers the overreach penalty in Wrap-Up. */
+export type CaseTask = {
+  code: "progress" | "ward" | "ptwr" | "ed";
+  label: string;
+  minGrade: Grade;
+};
+
 /** The trainee using the simulator; captured by the sign-in page. */
 export type UserProfile = {
   forename: string;
@@ -206,6 +217,7 @@ export type UserProfile = {
   /** Synthetic doctor ID, e.g. "d912345". d9##### = runtime-generated logins;
    * authored case staff use d0#####-d8##### so they can never collide. */
   hcpId: string;
+  grade: Grade;
 };
 
 /** An open note in the right-rail NoteWriter; multiple can be edited at once. */
@@ -273,6 +285,7 @@ export type CaseRubric = {
   caseId: string;
   /** Which draft type this rubric applies to, e.g. "Progress Notes". */
   noteType: string;
+  task: CaseTask;
   items: RubricItem[];
   /** Conciseness band: no penalty up to max, then 1 point per 25 words, capped at 10. */
   wordBand: { target: number; max: number };

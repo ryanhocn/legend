@@ -17,7 +17,7 @@ const draft: NoteDraft = {
   body: "<div>unused here</div>",
 };
 
-const user: UserProfile = { forename: "Ryan", surname: "Ho", hcpId: "d912345" };
+const user: UserProfile = { forename: "Ryan", surname: "Ho", hcpId: "d912345", grade: "fy" };
 const now = new Date(2026, 6, 4, 9, 5); // 04/07/2026 09:05 local
 
 describe("formatStamp", () => {
@@ -31,8 +31,8 @@ describe("buildUserNote", () => {
     const note = buildUserNote(draft, user, "Plan: ERCP.", "signed", now);
     expect(note.kind).toBe("note");
     expect(note.author).toBe("Ho, Ryan");
-    expect(note.credential).toBe("MS");
-    expect(note.authorRole).toBe("*MEDICAL STUDENT");
+    expect(note.credential).toBe("MD");
+    expect(note.authorRole).toBe("*PHYSICIAN: RESIDENT");
     expect(note.status).toBe("signed");
     expect(note.body).toBe("Plan: ERCP.");
     expect(note.admission).toBe(true);
@@ -70,7 +70,7 @@ describe("buildUserNote", () => {
   });
 });
 
-const testUser: UserProfile = { forename: "Jordan", surname: "Lee", hcpId: "d912345" };
+const testUser: UserProfile = { forename: "Jordan", surname: "Lee", hcpId: "d912345", grade: "fy" };
 
 const baseNote: ClinicalNote = {
   kind: "note",
@@ -121,8 +121,16 @@ describe("buildAddendumBlock / appendAddendum", () => {
 
   test("stamps author and full date", () => {
     expect(buildAddendumBlock(testUser, "Seen again post ERCP.", now)).toBe(
-      "ADDENDUM — Lee, Jordan, MS — 07/07/2026 09:05:\nSeen again post ERCP.",
+      "ADDENDUM — Lee, Jordan, MD — 07/07/2026 09:05:\nSeen again post ERCP.",
     );
+  });
+
+  test("consultant addendum stamps MD too, role follows grade on filed notes", () => {
+    const consultant: UserProfile = { ...testUser, grade: "consultant" };
+    const draft: NoteDraft = { id: "draft-2", noteType: "Progress Note", service: "(A) GS", body: "" };
+    const note = buildUserNote(draft, consultant, "text", "signed", new Date(2026, 6, 7));
+    expect(note.credential).toBe("MD");
+    expect(note.authorRole).toBe("*PHYSICIAN: FACULTY");
   });
 
   test("appendAddendum stacks blocks with a blank line", () => {

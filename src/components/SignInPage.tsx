@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { LogIn } from "lucide-react";
+import { GRADES } from "../lib/grades";
 import { generateHcpId } from "../lib/userNotes";
-import type { UserProfile } from "../types";
+import type { Grade, UserProfile } from "../types";
 
 /**
  * Demo sign-in gate: captures the trainee's name so their notes are
@@ -11,6 +12,7 @@ import type { UserProfile } from "../types";
 export function SignInPage({ onComplete }: { onComplete: (user: UserProfile) => void }) {
   const [forename, setForename] = useState("");
   const [surname, setSurname] = useState("");
+  const [grade, setGrade] = useState<Grade>("fy");
   const ready = forename.trim().length > 0 && surname.trim().length > 0;
 
   function submit(event: React.FormEvent) {
@@ -20,6 +22,7 @@ export function SignInPage({ onComplete }: { onComplete: (user: UserProfile) => 
       forename: forename.trim(),
       surname: surname.trim(),
       hcpId: generateHcpId(),
+      grade,
     });
   }
 
@@ -50,6 +53,16 @@ export function SignInPage({ onComplete }: { onComplete: (user: UserProfile) => 
             onChange={(event) => setSurname(event.target.value)}
             placeholder="e.g. Lee"
           />
+        </label>
+        <label className="signin-field">
+          Hierarchy
+          <select value={grade} onChange={(event) => setGrade(event.target.value as Grade)}>
+            {GRADES.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label} ({entry.usLabel})
+              </option>
+            ))}
+          </select>
         </label>
 
         <button className="signin-submit" type="submit" disabled={!ready}>

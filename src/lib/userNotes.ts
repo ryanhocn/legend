@@ -1,4 +1,5 @@
 import type { ClinicalNote, NoteCategory, NoteDraft, NoteStatus, UserProfile } from "../types";
+import { gradeAuthorRole, gradeCredential } from "./grades";
 
 /** Building user-authored notes out of editor drafts. Pure; no React. */
 
@@ -34,8 +35,8 @@ export function buildUserNote(
     noteType: draft.noteType,
     author: `${user.surname.trim()}, ${user.forename.trim()}`,
     authorId: user.hcpId,
-    credential: "MS",
-    authorRole: "*MEDICAL STUDENT",
+    credential: gradeCredential(user.grade),
+    authorRole: gradeAuthorRole(user.grade),
     service: draft.service,
     dateOfService: stamp,
     fileTime: status === "signed" ? stamp : "—",
@@ -70,7 +71,7 @@ export function isOwnNote(
 export function buildAddendumBlock(user: UserProfile, text: string, now: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  return `ADDENDUM — ${user.surname.trim()}, ${user.forename.trim()}, MS — ${stamp}:\n${text}`;
+  return `ADDENDUM — ${user.surname.trim()}, ${user.forename.trim()}, ${gradeCredential(user.grade)} — ${stamp}:\n${text}`;
 }
 
 export function appendAddendum(existing: string | undefined, block: string): string {

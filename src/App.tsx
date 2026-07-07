@@ -18,7 +18,8 @@ function parseUser(raw: string): UserProfile | null {
     const parsed = JSON.parse(raw) as UserProfile;
     return typeof parsed.forename === "string" &&
       typeof parsed.surname === "string" &&
-      typeof parsed.hcpId === "string"
+      typeof parsed.hcpId === "string" &&
+      typeof parsed.grade === "string"
       ? parsed
       : null;
   } catch {
