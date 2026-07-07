@@ -37,8 +37,8 @@ describe("buildUserNote", () => {
     expect(note.body).toBe("Plan: ERCP.");
     expect(note.admission).toBe(true);
     expect(note.encounterId).toBe("enc-admission");
-    expect(note.dateOfService).toBe("04/07 09:05");
-    expect(note.fileTime).toBe("04/07 09:05");
+    expect(note.dateOfService).toBe("04/07/26 0905");
+    expect(note.fileTime).toBe("04/07/26 0905");
     expect(note.timestamp).toBe(Math.floor(now.getTime() / 1000));
   });
 
@@ -172,8 +172,8 @@ describe("refileUserNote", () => {
     expect(refiled.noteType).toBe("H&P");
     expect(refiled.category).toBe("H&P");
     expect(refiled.timestamp).toBe(Math.floor(now.getTime() / 1000));
-    expect(refiled.dateOfService).toBe("07/07 10:30");
-    expect(refiled.fileTime).toBe("07/07 10:30");
+    expect(refiled.dateOfService).toBe("07/07/26 1030");
+    expect(refiled.fileTime).toBe("07/07/26 1030");
   });
 
   test("pending again leaves fileTime em-dashed", () => {

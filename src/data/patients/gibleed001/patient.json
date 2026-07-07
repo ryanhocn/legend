@@ -1,0 +1,34 @@
+{
+  "surname": "Whitfield",
+  "forename": "Gordon",
+  "displayName": "Whitfield, Gordon",
+  "initials": "GW",
+  "pronouns": "he/him",
+  "sex": "Male",
+  "age": 72,
+  "dob": "21/02/1954",
+  "mrn": "LEG-000008",
+  "location": "AMU Bay 4",
+  "specialty": "General Medicine",
+  "attending": {
+    "forename": "Miriam",
+    "surname": "Harcourt",
+    "credential": "MD",
+    "specialty": "General Medicine"
+  },
+  "primaryCare": {
+    "forename": "Alistair",
+    "surname": "Fenwick",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "Repeat Hb 89 resulted this morning — awaiting review",
+  "presentingComplaint": "Collapse in the bathroom with brief loss of consciousness",
+  "phone": "No mobile on file",
+  "infection": "None recorded",
+  "bmi": "26.8",
+  "stickyNote": "Collapse + postural drop — ask what he's LOSING, not just why he fell.\nDark tarry stools — iron tablets or melaena? Check the stool chart.\nHb 141 (May) → 96 → 89. Urea rising, creatinine normal.\nNaproxen (new, locum) + apixaban BOTH still on the chart — 2019 DU letter says avoid NSAIDs.\nGlasgow-Blatchford. G&S never sent. Needs OGD."
+}

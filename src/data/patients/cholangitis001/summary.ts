@@ -27,33 +27,33 @@ export const caseCholangitis001Summary: CaseSummary = {
       conc: "4.5 g",
       method: "IV",
       freq: "TDS",
-      lastDose: "Today 10:05",
+      lastDose: "16/06/2026 10:05",
     },
     {
       medication: "Sodium chloride 0.9%",
       conc: "1 L",
       method: "IV",
       freq: "Cont.",
-      lastDose: "Today 09:40",
+      lastDose: "16/06/2026 09:40",
     },
     {
       medication: "Paracetamol",
       conc: "1 g",
       method: "IV/PO",
       freq: "QDS PRN",
-      lastDose: "Today 08:00",
+      lastDose: "16/06/2026 08:00",
     },
   ],
 
   weights: [
-    { when: "Today 06:00", value: "82.0 kg" },
-    { when: "Yesterday 06:00", value: "82.5 kg" },
+    { when: "16/06/2026 06:00", value: "82.0 kg" },
+    { when: "15/06/2026 06:00", value: "82.5 kg" },
   ],
 
   firstWeight: { when: "12/01/2026", value: "84.0 kg" },
 
   microbiology: [
-    { date: "Today", time: "09:10", state: "Blood cultures — no growth to date (pending)" },
+    { date: "16/06/2026", time: "09:10", state: "Blood cultures — no growth to date (pending)" },
   ],
 
   // Placeholder patient has pain only — no lines, drains, or wounds yet.

@@ -1,0 +1,34 @@
+{
+  "surname": "Fenwick",
+  "forename": "Dorothy",
+  "displayName": "Fenwick, Dorothy",
+  "initials": "DF",
+  "pronouns": "she/her",
+  "sex": "Female",
+  "age": 74,
+  "dob": "18/11/1951",
+  "mrn": "LEG-000011",
+  "location": "SAU Bay 2",
+  "specialty": "General Surgery",
+  "attending": {
+    "forename": "James",
+    "surname": "Whitmore",
+    "credential": "MD",
+    "specialty": "General Surgery"
+  },
+  "primaryCare": {
+    "forename": "Priya",
+    "surname": "Nair",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "NEWS2 5 and rising (was 1 at triage)",
+  "presentingComplaint": "Right-sided abdominal discomfort, off food, bowels not opened 3 days",
+  "phone": "Daughter (NOK) on file",
+  "infection": "None recorded",
+  "bmi": "26.8 (stable)",
+  "stickyNote": "Label says constipation — does the chart agree?\nSerial WCC/CRP rising over 2 days; temp creeping up, NEWS2 now 5.\nRetrocaecal appendix = soft abdomen, few classic signs. PR 'declined — not chased'.\nRegular codeine: masks the pain AND constipates.\nDiabetic on metformin, creatinine climbing — hold before any contrast CT."
+}

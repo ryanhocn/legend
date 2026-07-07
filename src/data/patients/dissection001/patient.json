@@ -1,0 +1,34 @@
+{
+  "surname": "Ferris",
+  "forename": "Malcolm",
+  "displayName": "Ferris, Malcolm",
+  "initials": "MF",
+  "pronouns": "he/him",
+  "sex": "Male",
+  "age": 66,
+  "dob": "04/03/1960",
+  "mrn": "LEG-000006",
+  "location": "ED Majors 6",
+  "specialty": "Emergency Medicine",
+  "attending": {
+    "forename": "Nadia",
+    "surname": "Osei",
+    "credential": "MD",
+    "specialty": "Emergency Medicine"
+  },
+  "primaryCare": {
+    "forename": "Marcus",
+    "surname": "Ellery",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "?Renal colic — analgesia escalated; CT KUB reported",
+  "presentingComplaint": "Sudden severe left flank pain radiating to the back",
+  "phone": "07700 900612 (mobile)",
+  "infection": "None recorded",
+  "bmi": "29.4",
+  "stickyNote": "You've been HANDED a label: '?renal colic'. Re-read the evidence before you accept it.\nPain TEARING + maximal at ONSET (ambulance + triage) — dropped from the later notes.\nBP different BETWEEN ARMS? Check the nursing obs. Systolic 190s — who is treating it?\nUrine dip: is there BLOOD? New early DIASTOLIC murmur documented once.\nCT KUB: 'no calculus... dilated thoracic aorta — suggest CT aortogram.' Actioned?\nPain 'controlled' on morphine is NOT the same as a diagnosis."
+}

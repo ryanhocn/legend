@@ -1,0 +1,34 @@
+{
+  "surname": "Bennett",
+  "forename": "Sandra",
+  "displayName": "Bennett, Sandra",
+  "initials": "SB",
+  "pronouns": "she/her",
+  "sex": "Female",
+  "age": 57,
+  "dob": "22/09/1968",
+  "mrn": "LEG-000003",
+  "location": "AMU Bay 7",
+  "specialty": "General Medicine",
+  "attending": {
+    "forename": "Folake",
+    "surname": "Adeyemi",
+    "credential": "MD",
+    "specialty": "General Medicine"
+  },
+  "primaryCare": {
+    "forename": "Eleanor",
+    "surname": "Byrne",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "Aspirin — angioedema and bronchospasm",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "Repeat troponin resulted overnight — awaiting review",
+  "presentingComplaint": "Epigastric burning ('indigestion'), nausea and clamminess on exertion",
+  "phone": "No mobile on file",
+  "infection": "None recorded",
+  "bmi": "31.4",
+  "stickyNote": "Diabetic + 'indigestion' — atypical ACS until proven otherwise.\nExertional pattern in GP letter 15/06; father MI at 54.\nCHASE the repeat troponin — resulted overnight?\nASPIRIN allergy (angioedema) — check the clerking plan!\neGFR 28 — renal dosing for anticoagulation; hold metformin."
+}

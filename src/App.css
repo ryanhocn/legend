@@ -832,13 +832,17 @@ button {
 .note-row-body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.note-row-top {
+/* Left column: author, role, department. */
+.note-row-left {
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
+  flex-direction: column;
 }
 
 .note-row-author {
@@ -849,40 +853,47 @@ button {
   white-space: nowrap;
 }
 
-.note-row-type {
+.note-row-role,
+.note-row-dept {
+  color: #6a7159;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Right column: type, then Date of Service / File Time, right-aligned. */
+.note-row-right {
   flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.note-row-type {
   color: #6a5a00;
   font-weight: bold;
   font-size: 11px;
-}
-
-.note-row-role {
-  color: #6a7159;
-  font-size: 11px;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.note-row-meta {
+.note-row-time {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   color: #6a7159;
   font-size: 11px;
-  line-height: 1.3;
-}
-
-.note-row-meta .meta-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
-.note-row-meta .meta-value {
-  flex: none;
-  white-space: nowrap;
+.note-row-time .meta-label {
+  color: #8a9072;
+}
+
+.note-row-time .meta-value {
+  font-variant-numeric: tabular-nums;
 }
 
 .note-status-badge {
@@ -2513,12 +2524,6 @@ button {
   gap: 2px;
 }
 
-.patient-list-rail-title {
-  font-weight: bold;
-  color: #263c20;
-  margin-bottom: 4px;
-}
-
 .patient-list-item {
   display: flex;
   align-items: center;
@@ -2582,6 +2587,50 @@ button {
 
 .patient-list-sub {
   color: #55663f;
+}
+
+/* "All Patients" pseudo-list sits above the specialty lists, visually set off. */
+.patient-list-item-all {
+  font-weight: bold;
+  color: #263c20;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 3px 3px 0 0;
+}
+
+/* Hierarchy filter: segmented chips in the list header. */
+.patient-list-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.patient-list-filter-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #77805f;
+  margin-right: 2px;
+}
+
+.patient-list-filter button {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 3px 9px;
+  font-size: 11px;
+  color: #2c3d25;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.patient-list-filter button:hover {
+  background: #eef3dd;
+}
+
+.patient-list-filter button.active {
+  background: #d8e2b7;
+  border-color: #b7c68f;
+  font-weight: bold;
 }
 
 .patient-list-search {

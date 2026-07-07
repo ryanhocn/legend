@@ -1,0 +1,34 @@
+{
+  "surname": "Merrick",
+  "forename": "Joanne",
+  "displayName": "Merrick, Joanne",
+  "initials": "JM",
+  "pronouns": "she/her",
+  "sex": "Female",
+  "age": 48,
+  "dob": "22/09/1977",
+  "mrn": "LEG-000019",
+  "location": "ED Resus Bay 2 (from Majors 9)",
+  "specialty": "Emergency Medicine",
+  "attending": {
+    "forename": "Rachel",
+    "surname": "Sinclair",
+    "credential": "MD",
+    "specialty": "Emergency Medicine"
+  },
+  "primaryCare": {
+    "forename": "Gareth",
+    "surname": "Rowlands",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "NEWS2 8 — hypotensive and hypoxic, moved to resus 11:55",
+  "presentingComplaint": "Collapse at work with brief LOC and limb twitching",
+  "phone": "07700 900742 (mobile)",
+  "infection": "None suspected",
+  "bmi": "27.4",
+  "stickyNote": "'?First fit' is a triage label — read the AMBULANCE sheet. Tongue? Incontinence? Post-ictal?\nA first-fit patient should be WELL. BP 100→86 systolic, HR 112→124, SpO2 90–91% RA — who owns these obs?\nECG is not 'nonspecific': TWI V1–V4, ?S1Q3T3. What strains a right heart?\n3/52 post hysterectomy (long op) + oral HRT. Trop 89, lactate 3.4.\nSyncope + hypotension + RV strain — what's the time-critical treatment question?"
+}

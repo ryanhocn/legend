@@ -1,0 +1,34 @@
+{
+  "surname": "Prescott",
+  "forename": "Gordon",
+  "displayName": "Prescott, Gordon",
+  "initials": "GP",
+  "pronouns": "he/him",
+  "sex": "Male",
+  "age": 68,
+  "dob": "21/11/1957",
+  "mrn": "LEG-000002",
+  "location": "AMU Bay 5",
+  "specialty": "General Medicine",
+  "attending": {
+    "forename": "Folake",
+    "surname": "Adeyemi",
+    "credential": "MD",
+    "specialty": "General Medicine"
+  },
+  "primaryCare": {
+    "forename": "Eleanor",
+    "surname": "Pritchard",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "NEWS2 6 — persistent hypoxia + tachycardia",
+  "presentingComplaint": "Breathless on background of COPD — labelled ?IECOPD",
+  "phone": "Mobile on file",
+  "infection": "None recorded",
+  "bmi": "24.6",
+  "stickyNote": "Chest CLEAR x3 exams, no wheeze, apyrexial, CRP only 18 — does IECOPD actually fit?\nHypoxia out of proportion to a clear CXR. HR never below 100.\nTKR 3/52 ago — what happened to the rivaroxaban? (GP telephone note)\nD-dimer sits on the admission panel — did anyone act on it? CTPA requested overnight, still unvetted — CHASE.\nABG: type 1, pCO2 LOW — not a retainer. Check the sats target.\nVTE prophylaxis never prescribed."
+}

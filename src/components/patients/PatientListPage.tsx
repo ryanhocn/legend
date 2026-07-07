@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { ClipboardList, FolderOpen, Search } from "lucide-react";
+import { ClipboardList, FolderOpen, Search, Users } from "lucide-react";
 import { caseRegistry, listSpecialties } from "../../data/patients";
-import { gradeLabel, gradeRank } from "../../lib/grades";
+import { GRADES, gradeLabel, gradeRank } from "../../lib/grades";
+import type { Grade } from "../../types";
+
+/** Rail selection: a specialty list, or the "all patients" pseudo-list. */
+const ALL = "all";
 
 /**
  * Full-screen Patient Lists activity (the Epic patient-list view, sim-sized):
@@ -18,15 +22,30 @@ export function PatientListPage({
   onOpen: (caseId: string) => void;
 }) {
   const specialties = listSpecialties();
-  const [selected, setSelected] = useState(specialties[0] ?? "");
+  // Default to the cross-specialty "All Patients" list.
+  const [selected, setSelected] = useState<string>(ALL);
+  const [hierarchy, setHierarchy] = useState<Grade | typeof ALL>(ALL);
+  const allPatients = selected === ALL;
   const rows = caseRegistry
-    .filter((c) => c.specialty === selected)
+    .filter((c) => allPatients || c.specialty === selected)
+    .filter((c) => hierarchy === ALL || c.rubric.task.minGrade === hierarchy)
     .sort((a, b) => gradeRank(a.rubric.task.minGrade) - gradeRank(b.rubric.task.minGrade));
 
   return (
     <div className="patient-list-page">
       <div className="patient-list-rail">
-        <div className="patient-list-rail-title">My Lists</div>
+        <button
+          className={
+            allPatients
+              ? "patient-list-item patient-list-item-all active"
+              : "patient-list-item patient-list-item-all"
+          }
+          onClick={() => setSelected(ALL)}
+        >
+          <Users size={13} />
+          <span className="patient-list-item-name">All Patients</span>
+          <span className="patient-list-item-count">{caseRegistry.length}</span>
+        </button>
         {specialties.map((specialty) => {
           const count = caseRegistry.filter((c) => c.specialty === specialty).length;
           return (
@@ -52,11 +71,29 @@ export function PatientListPage({
 
       <div className="patient-list-main">
         <div className="patient-list-head">
-          <h1>Patient Lists</h1>
+          <h1>{allPatients ? "All Patients" : selected}</h1>
           <span className="patient-list-sub">
-            {selected} · {rows.length} patient{rows.length === 1 ? "" : "s"}
+            {rows.length} patient{rows.length === 1 ? "" : "s"}
           </span>
           <div className="toolbar-spacer" />
+          <div className="patient-list-filter" role="group" aria-label="Filter by hierarchy">
+            <span className="patient-list-filter-label">Hierarchy</span>
+            <button
+              className={hierarchy === ALL ? "active" : ""}
+              onClick={() => setHierarchy(ALL)}
+            >
+              All
+            </button>
+            {GRADES.map((g) => (
+              <button
+                key={g.key}
+                className={hierarchy === g.key ? "active" : ""}
+                onClick={() => setHierarchy(g.key)}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
           <div className="patient-list-search">
             <Search size={13} />
             <span>Search Current Locations</span>
@@ -67,7 +104,7 @@ export function PatientListPage({
           {/* Fixed layout + explicit widths so columns don't reflow when
               switching lists (only Handoff flexes). */}
           <colgroup>
-            <col style={{ width: 90 }} />
+            <col style={{ width: 100 }} />
             <col style={{ width: 190 }} />
             <col style={{ width: 110 }} />
             <col style={{ width: 80 }} />

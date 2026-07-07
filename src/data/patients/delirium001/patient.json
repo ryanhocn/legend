@@ -1,0 +1,34 @@
+{
+  "surname": "Ashworth",
+  "forename": "Ronald",
+  "displayName": "Ashworth, Ronald",
+  "initials": "RA",
+  "pronouns": "he/him",
+  "sex": "Male",
+  "age": 87,
+  "dob": "22/11/1938",
+  "mrn": "LEG-000009",
+  "location": "Ward 9 Bay 4",
+  "specialty": "Geriatrics",
+  "attending": {
+    "forename": "Eleanor",
+    "surname": "Whitfield",
+    "credential": "MD",
+    "specialty": "Geriatrics"
+  },
+  "primaryCare": {
+    "forename": "Siobhan",
+    "surname": "Byrne",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation — ceiling to be discussed",
+  "acuity": "NEWS2 3 — labelled '?dementia progression ?UTI' at clerking",
+  "presentingComplaint": "Acute agitation and confusion over 48 hours — brought in by daughter",
+  "phone": "No mobile on file",
+  "infection": "None recorded",
+  "bmi": "23.4 (was 24.1 in 10/2025)",
+  "stickyNote": "Lucid a week ago per daughter — an acute change is DELIRIUM until proven otherwise. Where's the 4AT?\nDrugs, retention, constipation, infection, pain — read the drug chart DATES, not just the list.\nPositive dip ≠ UTI in an 87M: nitrites? culture?\nDribbling + suprapubic fullness — has anyone actually scanned the bladder?\nParkinson's on co-careldopa — check what got written up overnight."
+}

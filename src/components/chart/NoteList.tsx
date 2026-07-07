@@ -43,10 +43,20 @@ export function NoteList({
           <div className="note-row-avatar">{initials(note.author)}</div>
 
           <div className="note-row-body">
-            <div className="note-row-top">
+            {/* Left: who wrote it. Right: what it is and when. */}
+            <div className="note-row-left">
               <span className="note-row-author">
                 {formatClinician(note.author, note.credential)}
               </span>
+              <div className="note-row-role">{note.authorRole}</div>
+              <div className="note-row-dept">{note.service}</div>
+              {note.status !== "signed" && (
+                <span className={`note-status-badge ${note.status}`}>
+                  {note.status === "incomplete" ? "Incomplete" : "Needs Cosign"}
+                </span>
+              )}
+            </div>
+            <div className="note-row-right">
               <span className="note-row-type">
                 {note.urgent && (
                   <CircleAlert
@@ -57,21 +67,15 @@ export function NoteList({
                 )}
                 {note.noteType}
               </span>
+              <div className="note-row-time">
+                <span className="meta-label">Date of Service</span>
+                <span className="meta-value">{note.dateOfService}</span>
+              </div>
+              <div className="note-row-time">
+                <span className="meta-label">File Time</span>
+                <span className="meta-value">{note.fileTime}</span>
+              </div>
             </div>
-            <div className="note-row-role">{note.authorRole}</div>
-            <div className="note-row-meta">
-              <span className="meta-label">Date of Service:</span>
-              <span className="meta-value">{note.dateOfService}</span>
-            </div>
-            <div className="note-row-meta">
-              <span className="meta-label">{note.service} · File Time:</span>
-              <span className="meta-value">{note.fileTime}</span>
-            </div>
-            {note.status !== "signed" && (
-              <span className={`note-status-badge ${note.status}`}>
-                {note.status === "incomplete" ? "Incomplete" : "Needs Cosign"}
-              </span>
-            )}
           </div>
         </button>
       ))}

@@ -1,0 +1,34 @@
+{
+  "surname": "Pemberton",
+  "forename": "Arthur",
+  "displayName": "Pemberton, Arthur",
+  "initials": "AP",
+  "pronouns": "he/him",
+  "sex": "Male",
+  "age": 89,
+  "dob": "03/02/1937",
+  "mrn": "LEG-000020",
+  "location": "Ward 11 (Frailty) Bay 1",
+  "specialty": "Care of the Elderly",
+  "attending": {
+    "forename": "Priya",
+    "surname": "Nair",
+    "credential": "MD",
+    "specialty": "Care of the Elderly"
+  },
+  "primaryCare": {
+    "forename": "Margaret",
+    "surname": "Hollis",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "Full escalation (overnight clerking) — no DNACPR / ReSPECT on file",
+  "acuity": "NEWS2 5 — third aspiration pneumonia in four months",
+  "presentingComplaint": "Fever, drowsiness and rattly breathing after lunch at his nursing home",
+  "phone": "Contact via daughter (NOK): Wren, Julie",
+  "infection": "None recorded",
+  "bmi": "17.8 (was 19.6 in 03/2026)",
+  "stickyNote": "Third aspiration in 4/12 — an event, or a trajectory?\nSALT letter 12/06: end-stage dysphagia. What did they actually say about NG?\nBoth prior discharge summaries: 'consider ceiling of care' — never actioned. Who owns that today?\nNo DNACPR/ReSPECT anywhere. Daughter (RGN) is already asking the question — read the ED note.\nCFS 8, weight 55.9 → 51.0 kg, refusing intake. Tube feeding in advanced dementia — what does the evidence say?"
+}

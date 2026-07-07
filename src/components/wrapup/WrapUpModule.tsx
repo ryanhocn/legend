@@ -16,6 +16,8 @@ type Candidate = {
   label: string;
   meta: string;
   text: string;
+  /** True only for signed notes; drafts never incur the overreach penalty. */
+  signed: boolean;
 };
 
 /**
@@ -53,6 +55,7 @@ export function WrapUpModule({
           label: `${draft.noteType} (open draft)`,
           meta: `${draft.service} · ${wordCount(text)} words`,
           text,
+          signed: false,
         };
       }),
     ...userNotes
@@ -62,6 +65,18 @@ export function WrapUpModule({
         label: `${note.noteType} (signed)`,
         meta: `${formatClinician(note.author, note.credential)} · ${note.dateOfService} · ${wordCount(note.body)} words`,
         text: note.body,
+        signed: true,
+      })),
+    // Pended (incomplete) notes are closed drafts: submittable for practice
+    // feedback, but never signed, so they never incur the overreach penalty.
+    ...userNotes
+      .filter((note) => note.status === "incomplete")
+      .map((note) => ({
+        key: note.id,
+        label: `${note.noteType} (pending)`,
+        meta: `${formatClinician(note.author, note.credential)} · ${note.dateOfService} · ${wordCount(note.body)} words`,
+        text: note.body,
+        signed: false,
       })),
   ];
   const selected =
@@ -70,7 +85,11 @@ export function WrapUpModule({
   function submit() {
     if (!selected) return;
     setStoredAttempt(
-      JSON.stringify({ text: selected.text, at: formatStamp(new Date()) } satisfies StoredAttempt),
+      JSON.stringify({
+        text: selected.text,
+        at: formatStamp(new Date()),
+        signed: selected.signed,
+      } satisfies StoredAttempt),
     );
   }
 
@@ -89,7 +108,7 @@ export function WrapUpModule({
       )}
 
       {attempt ? (
-        isOverreach(user.grade, rubric.task.minGrade) ? (
+        attempt.signed && isOverreach(user.grade, rubric.task.minGrade) ? (
           <div className="wrapup-overreach">
             <div className="wrapup-overreach-score">
               -1000 / {scoreNote(attempt.text, rubric).possible}

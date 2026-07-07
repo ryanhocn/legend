@@ -1,0 +1,34 @@
+{
+  "surname": "Farrell",
+  "forename": "Joshua",
+  "displayName": "Farrell, Joshua",
+  "initials": "JF",
+  "pronouns": "he/him",
+  "sex": "Male",
+  "age": 19,
+  "dob": "21/02/2007",
+  "mrn": "LEG-000007",
+  "location": "ED Majors 6 (awaiting AMU bed)",
+  "specialty": "Emergency Medicine",
+  "attending": {
+    "forename": "Alice",
+    "surname": "Drummond",
+    "credential": "MD",
+    "specialty": "Emergency Medicine"
+  },
+  "primaryCare": {
+    "forename": "Margaret",
+    "surname": "Holloway",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None (D&V precautions stood down 08:15)",
+  "code": "For escalation",
+  "acuity": "DKA (pH 7.18) — fixed-rate insulin running, hourly monitoring",
+  "presentingComplaint": "Vomiting and abdominal pain for 24 hours",
+  "phone": "07700 900218 (mobile)",
+  "infection": "None confirmed — '?gastroenteritis' label revised",
+  "bmi": "19.9 (was 22.1 in 05/2026)",
+  "stickyNote": "'Gastroenteritis' is a LABEL, not a diagnosis — who reviewed the gas?\nWeeks of thirst + polyuria + weight loss are in the TRIAGE note. Read it.\nDeep sighing breathing = Kussmaul until proven otherwise. VBG: pH? Ketones?\nK+ 3.4 — insulin drives K+ into cells. Replace K+ WITH the insulin, recheck at 1h.\nFixed-rate insulin 0.1 units/kg/hr — never parked behind an 'oral fluids trial'."
+}

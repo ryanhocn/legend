@@ -1,0 +1,34 @@
+{
+  "surname": "Whitfield",
+  "forename": "Diane",
+  "displayName": "Whitfield, Diane",
+  "initials": "DW",
+  "pronouns": "she/her",
+  "sex": "Female",
+  "age": 52,
+  "dob": "22/09/1973",
+  "mrn": "LEG-000005",
+  "location": "ED Majors 4 (awaiting bed)",
+  "specialty": "Emergency Medicine",
+  "attending": {
+    "forename": "Priya",
+    "surname": "Kapoor",
+    "credential": "MD",
+    "specialty": "Emergency Medicine"
+  },
+  "primaryCare": {
+    "forename": "Thomas",
+    "surname": "Fletcher",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "Penicillin — ANAPHYLAXIS (lip/throat swelling, 2018)",
+  "isolation": "Protective isolation (neutropenic)",
+  "code": "For escalation",
+  "acuity": "?Neutropenic sepsis — NEWS2 escalating",
+  "presentingComplaint": "Fever, malaise and sore throat, day 10 post-chemotherapy",
+  "phone": "07700 900431 (mobile)",
+  "infection": "Neutropenic — protective isolation",
+  "bmi": "24.6 (was 26.1 in 03/2026)",
+  "stickyNote": "Day 10 post CHEMO (docetaxel) — the 'flu-like/?viral' label is the trap. Think NEUTROPENIC SEPSIS.\nRead the FBC: neutrophils? The antibiotic clock started at TRIAGE — door-to-needle target 1h.\nParacetamol given at triage can MASK the fever — don't be reassured by a normal temp.\nPENICILLIN allergy = ANAPHYLAXIS. The neutropenic pathway defaults to pip/taz — safe alternative?\nCultures before abx, but DON'T delay abx. Isolate, escalate, phone acute oncology."
+}

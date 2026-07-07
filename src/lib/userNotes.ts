@@ -13,10 +13,17 @@ const CATEGORY_BY_TYPE: Record<string, NoteCategory> = {
   "Discharge Summary": "Discharge",
 };
 
-/** DD/MM HH:MM, matching the app's absolute-time convention. */
+/** DD/MM HH:MM, matching the app's absolute-time convention (wrap-up "at"). */
 export function formatStamp(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** DD/MM/YY HHMM — the absolute note-row stamp (Date of Service / File Time). */
+export function formatNoteStamp(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const yy = pad(date.getFullYear() % 100);
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${yy} ${pad(date.getHours())}${pad(date.getMinutes())}`;
 }
 
 export function buildUserNote(
@@ -26,7 +33,7 @@ export function buildUserNote(
   status: NoteStatus,
   now: Date,
 ): ClinicalNote {
-  const stamp = formatStamp(now);
+  const stamp = formatNoteStamp(now);
   const timestamp = Math.floor(now.getTime() / 1000);
   return {
     kind: "note",
@@ -87,7 +94,7 @@ export function refileUserNote(
   status: NoteStatus,
   now: Date,
 ): ClinicalNote {
-  const stamp = formatStamp(now);
+  const stamp = formatNoteStamp(now);
   return {
     ...original,
     noteType: draft.noteType,

@@ -1,0 +1,34 @@
+{
+  "surname": "Marchant",
+  "forename": "Eileen",
+  "displayName": "Marchant, Eileen",
+  "initials": "EM",
+  "pronouns": "she/her",
+  "sex": "Female",
+  "age": 79,
+  "dob": "14/02/1947",
+  "mrn": "LEG-000010",
+  "location": "Elderly Care Unit Bay 4",
+  "specialty": "Geriatrics",
+  "attending": {
+    "forename": "Grace",
+    "surname": "Osei",
+    "credential": "MD",
+    "specialty": "Geriatrics"
+  },
+  "primaryCare": {
+    "forename": "Colm",
+    "surname": "Byrne",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "Fluctuating conscious level — GCS 13 this morning",
+  "presentingComplaint": "Fluctuating drowsiness, worsening headache and unsteadiness 10 days after a fall",
+  "phone": "Landline only — daughter (Susan) is first contact",
+  "infection": "None recorded",
+  "bmi": "21.8 (weight 56.4 kg)",
+  "stickyNote": "Fall 10 days ago ON APIXABAN — was a CT head ever done? Read the 26/06 ED note.\nObs chart GCS: 15 -> 14 -> 13, fluctuating. Not 'just old age'.\nHeadache worse in the MORNINGS + new left weakness (physio note).\nDip trace leucs =/= UTI. Culture: mixed growth. Afebrile, CRP 22.\nApixaban STILL on the drug chart — hold? reversal plan? Who has been told?"
+}
