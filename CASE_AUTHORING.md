@@ -103,6 +103,18 @@ than for the chart itself.
   group): these score "organized".
 - `modelNote` is a consultant-standard plain-text note, revealed only after
   scoring. It must hit every rubric item: that is tested, not aspirational.
+- **Task & hierarchy** (rubric.ts `task`): every case declares the note task it
+  expects — `code` (`progress` | `ward` | `ptwr` | `ed`), a display `label`
+  (e.g. "POST-TAKE WARD ROUND"), and `minGrade` (`fy` | `st3` | `consultant`).
+  The patient list shows it and sorts easiest-first; signing a case above your
+  grade scores -1000 (overreach). Authoring targets: FY-level cases are
+  hospital-day-2+ progress-note scenarios (`code: "progress"`, `minGrade: "fy"`)
+  whose twist is recognizable and escalatable by a junior — size the rubric
+  `wordBand` generously, since the PROGRESS SmartText embeds vitals and labs
+  (~60-100 words). Consultant-level cases (`minGrade: "consultant"`) hinge on
+  judgment and ownership: complex multi-problem post-takes, ceiling-of-care and
+  end-of-life decisions, major post-intervention complications, cross-specialty
+  conflict.
 - **`rubric.test.ts` is required** and must at minimum mirror
   `cholangitis001/rubric.test.ts`:
   1. the model note matches every item (no misses, no critical misses),

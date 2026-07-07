@@ -18,6 +18,7 @@ function makeRubric(overrides: Partial<CaseRubric>): CaseRubric {
   return {
     caseId: "test001",
     noteType: "Progress Notes",
+    task: { code: "ward", label: "WARD ROUND REVIEW", minGrade: "fy" },
     items: [],
     wordBand: { target: 150, max: 250 },
     sections: [],

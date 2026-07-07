@@ -35,6 +35,7 @@ describe("isOverreach", () => {
     expect(isOverreach("fy", "fy")).toBe(false);
     expect(isOverreach("st3", "fy")).toBe(false);
     expect(isOverreach("st3", "st3")).toBe(false);
+    expect(isOverreach("consultant", "fy")).toBe(false);
     expect(isOverreach("consultant", "st3")).toBe(false);
     expect(isOverreach("consultant", "consultant")).toBe(false);
   });

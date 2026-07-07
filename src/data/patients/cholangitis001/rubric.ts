@@ -12,6 +12,7 @@ import type { CaseRubric } from "../../../types";
 export const caseCholangitis001Rubric: CaseRubric = {
   caseId: "cholangitis001",
   noteType: "Progress Note",
+  task: { code: "ptwr", label: "POST-TAKE WARD ROUND", minGrade: "st3" },
   wordBand: { target: 140, max: 240 },
   sections: [
     ["impression", "assessment", "diagnosis"],
