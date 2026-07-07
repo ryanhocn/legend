@@ -19,14 +19,14 @@ Make NotePreview's decorative Addendum button functional for notes the trainee o
 
 ## Ownership model: HCP IDs
 
-Every person can carry a stable clinician identifier (synthetic staff ID, format `HCP-` + 6 digits, analogous to the `LEG-` MRNs). Ownership is an ID comparison, which scales to future accounts and multiplayer.
+Every person can carry a stable clinician identifier: a doctor ID in the format `d` + 6 digits (e.g. `d123456`), mirroring real hospital staff logins. Other professions get their own prefixes later (pharmacy, nursing, physio); ownership is an ID comparison, which scales to future accounts and multiplayer.
 
-- `UserProfile` gains `hcpId: string`, generated once at sign-in (random `HCP-9#####`, persisted with the profile in `legend-user`). Future account systems replace generation with server-assigned IDs; nothing else changes.
+- `UserProfile` gains `hcpId: string`, generated once at sign-in (random `d9#####`; the leading 9 is reserved for runtime-generated users so authored case staff, who use `d0#####`-`d8#####`, can never collide). Persisted with the profile in `legend-user`. Future account systems replace generation with server-assigned IDs; nothing else changes.
 - `ClinicalNote` gains `authorId?: string`. Notes without one are ownable by nobody (today's behavior for all static notes). `buildUserNote` stamps `authorId: user.hcpId` on trainee-filed notes.
 - Each case may declare the persona the trainee plays: `playerHcpId?: string` on `CaseBundle` (set in the registry entry). This is the piece a bare ID comparison cannot provide: the case saying "in this chart, you are this resident". Documented in CASE_AUTHORING.md.
 - Ownership rule (pure helper in `src/lib/userNotes.ts`):
   `isOwnNote(note, userHcpId, playerHcpId) = !!note.authorId && (note.authorId === userHcpId || note.authorId === playerHcpId)`, with a backstop: user notes are also recognized by their `user-note-` id prefix so stored notes filed before this change keep working.
-- cholangitis001: Mensah, Daniel gets an HCP ID; his notes (including `note-prog-003`) get `authorId`, and the case registry entry sets `playerHcpId` to it. Other cases and staff surfaces (encounters, care team) can adopt IDs later; the field is optional everywhere, so partial population is safe.
+- cholangitis001: Mensah, Daniel gets a doctor ID (e.g. `d284617`); his notes (including `note-prog-003`) get `authorId`, and the case registry entry sets `playerHcpId` to it. Other cases and staff surfaces (encounters, care team) can adopt IDs later; the field is optional everywhere, so partial population is safe.
 
 ## Button rules (NotePreview)
 
