@@ -99,11 +99,18 @@ sources); recommended stack:
   oral vanc?") and gets in-character, case-accurate replies/pushback (e.g.
   micro: wound culture is gram-negative only, blood cultures clear — continue
   metro + cipro IV). Async request/response, D1 rows, no real-time transport.
-- Phases: (0) persist unsigned drafts to localStorage now, ~1-2h, no accounts
-  needed; (1) Worker+Hono foundation ~0.5d; (2) better-auth accounts ~1.5-2d;
-  (3) notes/attempts persistence API + one-shot `POST /api/import` localStorage
-  migration ~1.5-2d; (4) Patient Message channel + authenticated LLM proxy
-  route. Full PLAN.md to be written per-phase.
+- Phases: (0) persist unsigned drafts — DISPUTED, see below; (1) Worker+Hono
+  foundation ~0.5d — **PLAN.md written 2026-07-09, ready to execute** (D1
+  provisioned in-phase, deploy task gated on Ryan); (2) better-auth accounts
+  ~1.5-2d; (3) notes/attempts persistence API + one-shot `POST /api/import`
+  localStorage migration ~1.5-2d; (4) Patient Message channel + authenticated
+  LLM proxy route. PLAN.md is per-phase; phase 2 plan after phase 1 ships.
+- Phase 0 dispute (2026-07-09): Ryan believes unsigned drafts already survive
+  reload; the code says otherwise — drafts live in `caseUi.editors`, plain
+  `useState` at App.tsx:49 (and `openCaseIds` App.tsx:46), wiped on reload.
+  What persists is pended/signed notes. Awaiting Ryan's recheck: either Pend
+  was the observed mechanism (then phase 0 is optional polish or declared
+  done-by-design) or an unsigned tab really survived F5 (then it's a bug hunt).
 
 ## Ideas / later
 - LLM judge layer for paraphrase-heavy rubric items (schema already judge-agnostic).
