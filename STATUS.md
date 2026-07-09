@@ -33,7 +33,10 @@ switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
 - Live demo deployed to Cloudflare **Workers static assets** (not Pages; Pages is legacy
   for new projects): https://legend.ryanho06.workers.dev. Config in `wrangler.jsonc`
   (`not_found_handling: "single-page-application"` handles deep links). Redeploy:
-  `npm run build` then `npx wrangler deploy`. Auth via `npx wrangler login`.
+  `npm run deploy` ONLY (build-first). Since the Cloudflare vite plugin (phase 1),
+  a bare `wrangler deploy` without a fresh build falls back to the source
+  wrangler.jsonc, which has no assets directory — it would ship a worker-only
+  bundle and take the live SPA down. Auth via `npx wrangler login`.
 - Mobile gate (70c80ca): narrow-portrait viewports get a "rotate or use a laptop"
   card (RotateGate); sign-in placeholders no longer suggest the patient's own name.
 - Multi-case foundation, all 3 SPEC phases shipped + browser-verified:
