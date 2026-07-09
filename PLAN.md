@@ -16,7 +16,7 @@ Facts the implementer must not re-litigate (verified against installed wrangler 
 
 Global constraints:
 - Do not modify any file under `src/` except the new `src/worker/` directory; the SPA is untouched this phase.
-- `npm run lint` carries ONE pre-existing error (StickyNotePopup.tsx, react-hooks/immutability). Acceptance is "no NEW errors", not zero.
+- Lint baseline (corrected during execution 2026-07-09: the StickyNotePopup.tsx error mentioned in earlier docs was fixed in the F1 fix wave): `npm run lint` is clean. Acceptance is "no NEW problems"; the generated `worker-configuration.d.ts` is eslint-ignored.
 - Commit after every task (see the hard-reset warning in STATUS.md). Never `git push` or deploy without Ryan's explicit go.
 - Windows/PowerShell environment; commands below are shell-neutral npm/npx.
 

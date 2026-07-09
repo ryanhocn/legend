@@ -125,9 +125,10 @@ sources); recommended stack:
   with a resume note in the backlog.
 
 ## Notes for next session
-- Verify target: `npm test` (43 tests, 5 files), `npx tsc -b`, `npm run lint`.
-  Lint carries ONE pre-existing error in StickyNotePopup.tsx
-  (react-hooks/immutability) that predates all this work — do not "fix" as a drive-by.
+- Verify target: `npm test` (182 tests, 23 files), `npx tsc -b`, `npm run lint`
+  (clean — the old StickyNotePopup.tsx error was fixed in the F1 fix wave;
+  generated `worker-configuration.d.ts` is eslint-ignored), `npm run build`
+  (emits `dist/client` + `dist/legend` since the Cloudflare vite plugin).
 - Unsigned note drafts are in-memory only (App.tsx useState); sign or pend before a
   reload or they're lost. Signed/pended user notes persist in localStorage.
 - The editor body is contentEditable HTML; scoring/reflow go through the pure libs
