@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createAuth } from "./auth";
 import { profile } from "./profile";
 import { purgeStaleAnonUsers } from "./purge";
+import { session } from "./session";
 import { work } from "./work";
 
 export const app = new Hono<{ Bindings: Env }>().basePath("/api");
@@ -23,6 +24,7 @@ app.get("/health", async (c) => {
 
 app.route("/", work);
 app.route("/", profile);
+app.route("/", session);
 
 const PURGE_AFTER_DAYS = 30;
 
