@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { createAuth } from "./auth";
+import { currentPersona, ensureSnapshot, type Persona } from "./persona";
 
 /**
  * Session-gated persona (alias) history. A trainee can occupy several personas
@@ -11,13 +12,6 @@ import { createAuth } from "./auth";
  */
 type ProfileEnv = { Bindings: Env; Variables: { userId: string } };
 
-type Persona = {
-  forename: string | null;
-  surname: string | null;
-  grade: string | null;
-  hcpId: string;
-};
-
 export const profile = new Hono<ProfileEnv>();
 
 profile.use("*", async (c, next) => {
@@ -27,45 +21,6 @@ profile.use("*", async (c, next) => {
   c.set("userId", session.user.id);
   await next();
 });
-
-/** Read the authoritative current persona straight off the user row. */
-function currentPersona(db: Env["DB"], userId: string) {
-  return db
-    .prepare(`SELECT forename, surname, grade, hcpId FROM user WHERE id = ?1`)
-    .bind(userId)
-    .first<Persona>();
-}
-
-function samePersona(a: Persona, b: Persona): boolean {
-  return (
-    a.forename === b.forename &&
-    a.surname === b.surname &&
-    a.grade === b.grade &&
-    a.hcpId === b.hcpId
-  );
-}
-
-/**
- * Ensure the given persona is recorded in the alias set. Deduped against the
- * whole set (not just the newest row) so toggling between two aliases never
- * grows duplicate rows. No-ops when the persona has no hcpId (unreachable for a
- * real user: the create hook always assigns one).
- */
-async function ensureSnapshot(db: Env["DB"], userId: string, persona: Persona | null): Promise<void> {
-  if (!persona || !persona.hcpId) return;
-  const existing = await db
-    .prepare(`SELECT forename, surname, grade, hcpId FROM user_alias WHERE userId = ?1`)
-    .bind(userId)
-    .all<Persona>();
-  if (existing.results.some((row) => samePersona(row, persona))) return;
-  await db
-    .prepare(
-      `INSERT INTO user_alias (id, userId, forename, surname, grade, hcpId, createdAt)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-    )
-    .bind(crypto.randomUUID(), userId, persona.forename, persona.surname, persona.grade, persona.hcpId, Date.now())
-    .run();
-}
 
 profile.get("/profile/aliases", async (c) => {
   const userId = c.get("userId");

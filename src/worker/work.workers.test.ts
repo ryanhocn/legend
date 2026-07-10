@@ -244,6 +244,40 @@ describe("rekeyUserWork", () => {
     ).bind(google).all<{ text: string }>();
     expect(attempts.results.map((r) => r.text)).toEqual(["guest attempt"]);
   });
+
+  test("linking moves alias rows and records the guest persona as an alias", async () => {
+    const auth = createAuth(env as unknown as Env, "http://localhost");
+    const anon = (await auth.api.signInAnonymous())!.user.id;
+    const google = (await auth.api.signInAnonymous())!.user.id; // stand-in row for the linked account
+
+    await env.DB.prepare(`UPDATE user SET forename = 'Test', surname = 'Test', grade = 'fy' WHERE id = ?1`)
+      .bind(anon)
+      .run();
+    const anonHcp = (await env.DB.prepare(`SELECT hcpId FROM user WHERE id = ?1`)
+      .bind(anon)
+      .first<{ hcpId: string }>())!.hcpId;
+    // A previously seeded alias row under the guest must survive the re-key too.
+    await env.DB.prepare(
+      `INSERT INTO user_alias (id, userId, forename, surname, grade, hcpId, createdAt)
+       VALUES ('rk-al1', ?1, 'Old', 'Guest', 'fy', 'd900001', 1)`,
+    ).bind(anon).run();
+
+    await rekeyUserWork(env.DB, anon, google);
+
+    const rows = (
+      await env.DB.prepare(
+        `SELECT forename, surname, hcpId FROM user_alias WHERE userId = ?1`,
+      ).bind(google).all<{ forename: string; surname: string; hcpId: string }>()
+    ).results;
+    expect(rows.some((r) => r.hcpId === "d900001")).toBe(true); // moved row
+    expect(
+      rows.some((r) => r.forename === "Test" && r.surname === "Test" && r.hcpId === anonHcp),
+    ).toBe(true); // outgoing guest persona snapshotted
+    const orphaned = await env.DB.prepare(`SELECT COUNT(*) AS n FROM user_alias WHERE userId = ?1`)
+      .bind(anon)
+      .first<{ n: number }>();
+    expect(orphaned?.n).toBe(0);
+  });
 });
 
 describe("purgeStaleAnonUsers", () => {
