@@ -1,5 +1,6 @@
 import type { ClinicalNote, NoteCategory, NoteDraft, NoteStatus, UserProfile } from "../types";
 import { gradeAuthorRole, gradeCredential } from "./grades";
+import { formatDate, formatNoteStamp, formatTime } from "./simTime";
 
 /** Building user-authored notes out of editor drafts. Pure; no React. */
 
@@ -19,22 +20,14 @@ export function formatStamp(date: Date): string {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-/** DD/MM/YY HHMM — the absolute note-row stamp (Date of Service / File Time). */
-export function formatNoteStamp(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const yy = pad(date.getFullYear() % 100);
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${yy} ${pad(date.getHours())}${pad(date.getMinutes())}`;
-}
-
 export function buildUserNote(
   draft: NoteDraft,
   user: UserProfile,
   plainBody: string,
   status: NoteStatus,
-  now: Date,
+  nowSec: number,
 ): ClinicalNote {
-  const stamp = formatNoteStamp(now);
-  const timestamp = Math.floor(now.getTime() / 1000);
+  const stamp = formatNoteStamp(nowSec);
   return {
     kind: "note",
     id: "", // the server assigns the real id when the note is POSTed
@@ -48,7 +41,7 @@ export function buildUserNote(
     service: draft.service,
     dateOfService: stamp,
     fileTime: status === "signed" ? stamp : "—",
-    timestamp,
+    timestamp: nowSec,
     status,
     admission: true,
     body: plainBody,
@@ -56,9 +49,8 @@ export function buildUserNote(
 }
 
 /** Stamped addendum block, matching the static attestation style in case data. */
-export function buildAddendumBlock(user: UserProfile, text: string, now: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const stamp = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+export function buildAddendumBlock(user: UserProfile, text: string, nowSec: number): string {
+  const stamp = `${formatDate(nowSec)} ${formatTime(nowSec)}`;
   return `ADDENDUM — ${user.surname.trim()}, ${user.forename.trim()}, ${gradeCredential(user.grade)} — ${stamp}:\n${text}`;
 }
 
@@ -83,16 +75,16 @@ export function refileUserNote(
   draft: NoteDraft,
   plainBody: string,
   status: NoteStatus,
-  now: Date,
+  nowSec: number,
 ): ClinicalNote {
-  const stamp = formatNoteStamp(now);
+  const stamp = formatNoteStamp(nowSec);
   return {
     ...original,
     noteType: draft.noteType,
     category: CATEGORY_BY_TYPE[draft.noteType] ?? original.category,
     body: plainBody,
     status,
-    timestamp: Math.floor(now.getTime() / 1000),
+    timestamp: nowSec,
     dateOfService: stamp,
     fileTime: status === "signed" ? stamp : "—",
   };

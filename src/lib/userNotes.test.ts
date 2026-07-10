@@ -17,17 +17,17 @@ const draft: NoteDraft = {
 };
 
 const user: UserProfile = { forename: "Ryan", surname: "Ho", hcpId: "d912345", grade: "fy" };
-const now = new Date(2026, 6, 4, 9, 5); // 04/07/2026 09:05 local
+const nowSec = Date.UTC(2026, 6, 4, 9, 5) / 1000; // 04/07/2026 09:05 UTC
 
 describe("formatStamp", () => {
   test("formats DD/MM HH:MM with zero padding", () => {
-    expect(formatStamp(now)).toBe("04/07 09:05");
+    expect(formatStamp(new Date(2026, 6, 4, 9, 5))).toBe("04/07 09:05");
   });
 });
 
 describe("buildUserNote", () => {
   test("builds a signed note attributed to the user", () => {
-    const note = buildUserNote(draft, user, "Plan: ERCP.", "signed", now);
+    const note = buildUserNote(draft, user, "Plan: ERCP.", "signed", nowSec);
     expect(note.kind).toBe("note");
     expect(note.author).toBe("Ho, Ryan");
     expect(note.credential).toBe("MD");
@@ -38,7 +38,7 @@ describe("buildUserNote", () => {
     expect(note.encounterId).toBe("enc-admission");
     expect(note.dateOfService).toBe("04/07/26 0905");
     expect(note.fileTime).toBe("04/07/26 0905");
-    expect(note.timestamp).toBe(Math.floor(now.getTime() / 1000));
+    expect(note.timestamp).toBe(nowSec);
   });
 
   test("maps each editor note type to its browser category", () => {
@@ -51,20 +51,20 @@ describe("buildUserNote", () => {
       ["Discharge Summary", "Discharge"],
     ];
     for (const [noteType, category] of cases) {
-      const note = buildUserNote({ ...draft, noteType }, user, "x", "signed", now);
+      const note = buildUserNote({ ...draft, noteType }, user, "x", "signed", nowSec);
       expect(note.category, noteType).toBe(category);
     }
   });
 
   test("pended drafts become incomplete notes with a dash file time", () => {
-    const note = buildUserNote(draft, user, "wip", "incomplete", now);
+    const note = buildUserNote(draft, user, "wip", "incomplete", nowSec);
     expect(note.status).toBe("incomplete");
     expect(note.fileTime).toBe("—");
   });
 
   test("server assigns the id on POST", () => {
-    const a = buildUserNote(draft, user, "x", "signed", now);
-    const b = buildUserNote({ ...draft, id: "draft-2" }, user, "x", "signed", now);
+    const a = buildUserNote(draft, user, "x", "signed", nowSec);
+    const b = buildUserNote({ ...draft, id: "draft-2" }, user, "x", "signed", nowSec);
     expect(a.id).toBe("");
     expect(b.id).toBe("");
   });
@@ -90,10 +90,10 @@ const baseNote: ClinicalNote = {
 };
 
 describe("buildAddendumBlock / appendAddendum", () => {
-  const now = new Date(2026, 6, 7, 9, 5); // 07/07/2026 09:05
+  const nowSec = Date.UTC(2026, 6, 7, 9, 5) / 1000; // 07/07/2026 09:05 UTC
 
   test("stamps author and full date", () => {
-    expect(buildAddendumBlock(testUser, "Seen again post ERCP.", now)).toBe(
+    expect(buildAddendumBlock(testUser, "Seen again post ERCP.", nowSec)).toBe(
       "ADDENDUM — Lee, Jordan, MD — 07/07/2026 09:05:\nSeen again post ERCP.",
     );
   });
@@ -101,14 +101,14 @@ describe("buildAddendumBlock / appendAddendum", () => {
   test("consultant addendum stamps MD too, role follows grade on filed notes", () => {
     const consultant: UserProfile = { ...testUser, grade: "consultant" };
     const draft: NoteDraft = { id: "draft-2", noteType: "Progress Note", service: "(A) GS", body: "" };
-    const note = buildUserNote(draft, consultant, "text", "signed", new Date(2026, 6, 7));
+    const note = buildUserNote(draft, consultant, "text", "signed", Date.UTC(2026, 6, 7) / 1000);
     expect(note.credential).toBe("MD");
     expect(note.authorRole).toBe("*PHYSICIAN: FACULTY");
   });
 
   test("appendAddendum stacks blocks with a blank line", () => {
-    const first = buildAddendumBlock(testUser, "One.", now);
-    const second = buildAddendumBlock(testUser, "Two.", now);
+    const first = buildAddendumBlock(testUser, "One.", nowSec);
+    const second = buildAddendumBlock(testUser, "Two.", nowSec);
     expect(appendAddendum(undefined, first)).toBe(first);
     expect(appendAddendum(first, second)).toBe(`${first}\n\n${second}`);
   });
@@ -133,10 +133,10 @@ describe("refileUserNote", () => {
     status: "incomplete",
     fileTime: "—",
   };
-  const now = new Date(2026, 6, 7, 10, 30);
+  const nowSec = Date.UTC(2026, 6, 7, 10, 30) / 1000;
 
   test("keeps identity, replaces content and stamps", () => {
-    const refiled = refileUserNote(original, draft, "NEW BODY", "signed", now);
+    const refiled = refileUserNote(original, draft, "NEW BODY", "signed", nowSec);
     expect(refiled.id).toBe(original.id);
     expect(refiled.author).toBe("Lee, Jordan");
     expect(refiled.authorId).toBe("d912345");
@@ -144,13 +144,13 @@ describe("refileUserNote", () => {
     expect(refiled.status).toBe("signed");
     expect(refiled.noteType).toBe("H&P");
     expect(refiled.category).toBe("H&P");
-    expect(refiled.timestamp).toBe(Math.floor(now.getTime() / 1000));
+    expect(refiled.timestamp).toBe(nowSec);
     expect(refiled.dateOfService).toBe("07/07/26 1030");
     expect(refiled.fileTime).toBe("07/07/26 1030");
   });
 
   test("pending again leaves fileTime em-dashed", () => {
-    const refiled = refileUserNote(original, draft, "NEW BODY", "incomplete", now);
+    const refiled = refileUserNote(original, draft, "NEW BODY", "incomplete", nowSec);
     expect(refiled.fileTime).toBe("—");
   });
 });
@@ -158,7 +158,7 @@ describe("refileUserNote", () => {
 describe("buildUserNote authorId", () => {
   test("stamps the login's doctor id", () => {
     const draft: NoteDraft = { id: "draft-1", noteType: "Progress Note", service: "(A) GS", body: "" };
-    const note = buildUserNote(draft, testUser, "text", "signed", new Date(2026, 6, 7));
+    const note = buildUserNote(draft, testUser, "text", "signed", Date.UTC(2026, 6, 7) / 1000);
     expect(note.authorId).toBe("d912345");
   });
 });

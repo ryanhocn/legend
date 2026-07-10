@@ -27,6 +27,7 @@ import {
   buildUserNote,
   refileUserNote,
 } from "../lib/userNotes";
+import { caseNow } from "../lib/simTime";
 import { plainTextToEditorHtml } from "../lib/smarttext";
 import type { CaseUiState, ClinicalNote, Note, NoteStatus, UserProfile } from "../types";
 
@@ -188,7 +189,7 @@ export function PatientWorkspace({
     setSaving(true);
     try {
       if (draft.mode === "addendum" && draft.targetNoteId) {
-        await work.addAddendum(draft.targetNoteId, buildAddendumBlock(user, text, new Date()));
+        await work.addAddendum(draft.targetNoteId, buildAddendumBlock(user, text, caseNow(activeCase.anchor)));
         onPatch((prev) => ({ editors: prev.editors.filter((d) => d.id !== id) }));
         return;
       }
@@ -197,9 +198,9 @@ export function PatientWorkspace({
           ? userNotes.find((n) => n.id === draft.targetNoteId)
           : undefined;
       if (target) {
-        await work.refileNote(refileUserNote(target, draft, text, status, new Date()));
+        await work.refileNote(refileUserNote(target, draft, text, status, caseNow(activeCase.anchor)));
       } else {
-        await work.createNote(buildUserNote(draft, user, text, status, new Date()));
+        await work.createNote(buildUserNote(draft, user, text, status, caseNow(activeCase.anchor)));
       }
       if (status === "signed") {
         // The note is committed once createNote/refileNote above has resolved,
