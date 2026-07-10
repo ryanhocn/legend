@@ -29,14 +29,22 @@ session.get("/cases/:caseId/session", async (c) => {
     .bind(scope, caseId)
     .first<{ simNow: number }>();
   if (row) return c.json({ simNow: row.simNow });
-  // Lazily create the clock at simNow = 0 on first read (idempotent).
+  // Lazily create the clock at simNow = 0 on first read, then re-read. The
+  // INSERT no-ops on conflict, so after it the row always exists; the re-SELECT
+  // returns whatever value actually landed (ours, or a concurrent create/write),
+  // never a stale hardcoded 0.
   await c.env.DB.prepare(
     `INSERT INTO case_session (scope, caseId, simNow, updatedAt) VALUES (?1, ?2, 0, ?3)
      ON CONFLICT (scope, caseId) DO NOTHING`,
   )
     .bind(scope, caseId, Date.now())
     .run();
-  return c.json({ simNow: 0 });
+  const created = await c.env.DB.prepare(
+    `SELECT simNow FROM case_session WHERE scope = ?1 AND caseId = ?2`,
+  )
+    .bind(scope, caseId)
+    .first<{ simNow: number }>();
+  return c.json({ simNow: created?.simNow ?? 0 });
 });
 
 session.put("/cases/:caseId/session", async (c) => {
