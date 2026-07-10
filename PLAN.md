@@ -1,303 +1,1184 @@
-# PLAN: Phase 2 — Real user accounts (better-auth + Google + anonymous guests)
+# Phase 3: Server-side notes/addenda/attempts — Implementation Plan
 
-> **EXECUTED AND SHIPPED 2026-07-10.** This plan is now a historical record (all
-> tasks T1-T8 done, incl. fix waves; ledger in .superpowers/sdd/progress.md).
-> The "port 5199" instructions below were an implementation-time workaround for a
-> then-occupied port 5173 and are obsolete: dev is pinned to 5173 strictPort.
-> Phase 3 gets a fresh PLAN.md.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Spec: `SPEC.md` (phase 3, approved 2026-07-10). Execution ledger: `.superpowers/sdd/progress.md`. Phase 2 plan is historical (git: PLAN.md @ HEAD~).
 
-> Implementation plan for SPEC.md (phase 2, approved 2026-07-10). Written for a fresh implementer with no prior context. Planner is not the implementer. Phase 1 plan is historical (git: PLAN.md @ fc27d81).
+**Goal:** Move trainee notes, addenda, and wrap-up attempts from localStorage to D1, owned by the better-auth `user.id`, with guest re-key on Google link and a daily anon purge.
 
-## Approach
+**Architecture:** New Hono sub-router `src/worker/work.ts` (session-gated CRUD over three new D1 tables, JSON note payloads), a `useCaseWork(caseId)` client hook replacing the localStorage stores in `PatientWorkspace`, `onLinkAccount` re-keys guest rows before the anonymous user is deleted, and a cron-triggered purge.
 
-Mount better-auth (>= 1.6.23, native D1) on the phase-1 Hono worker at `/api/auth/*`, with the anonymous plugin (guests) and Google as the only social provider. Persona (forename, surname, grade, hcpId) lives as `additionalFields` on the better-auth user table; `hcpId` is server-generated via a `databaseHooks.user.create.before` hook. The SPA gate switches from the localStorage `legend-user` profile to the better-auth React client's session; `UserProfile` is derived from the session user so all downstream code (authorship, ownership, overreach) is untouched. D1 migrations begin this phase.
+**Tech Stack:** Hono, better-auth 1.6 (native D1), Cloudflare D1 + cron triggers, React 19, vitest (node pool for pure libs, vitest-pool-workers for real-D1 API tests).
 
-The plan is sequenced to burn down the three research uncertainties FIRST (mount/basePath composition -> T2; CLI schema generation vs hand-authoring -> T3; real-D1 test plugin API -> T4) before any UI work.
+## Global Constraints
 
-Facts pinned by research 2026-07-10 (primary sources; do not re-litigate):
-- better-auth `basePath` must be the FULL external path (`"/api/auth"`), while the Hono route registers as `/auth/*` under the app's existing `.basePath("/api")`. This composition is inferred, not documented verbatim — T2 proves it empirically via better-auth's DB-free `/api/auth/ok` endpoint before anything else builds on it.
-- Per-request factory (`createAuth(c.env, origin)`) instead of a module-level singleton; do NOT use `import { env } from "cloudflare:workers"` (depends on ALS plumbing we don't need).
-- `trustedOrigins` is NOT needed: dev and prod each run same-origin with their own `baseURL`.
-- Anonymous plugin adds `isAnonymous` to the user schema; anonymous user email domain is configurable (`emailDomainName: "legend.local"`). Default behavior deletes the anonymous row on account-link; leave defaults (no in-app linking this phase per SPEC).
-- All four additionalFields are `required: false` (the anonymous plugin creates users without them; our UI enforces presence). `hcpId` is `input: false` (server-owned) and set in `databaseHooks.user.create.before`.
-- Client typing uses `inferAdditionalFields` with an EXPLICIT schema object, NOT `inferAdditionalFields<typeof auth>` — a type-only import of `src/worker/auth.ts` would pull worker files (and the global `Env`) into the DOM-typed app program and break the phase-1 type-world separation. Implementer verifies the object form against current docs (context7 /better-auth/better-auth) in-task.
-- `.dev.vars` values reach the worker under `npm run dev` (Cloudflare vite plugin) and `wrangler types` infers `Env` fields from `.dev.vars` keys — no `vars`/`secrets` block needed in wrangler.jsonc.
-- `cookieCache` stays DISABLED (two 2026 logout/expiry bugs: better-auth #8273, #10021). No KV secondary storage.
-- Cookies: better-auth only sets `Secure` in production mode; plain-HTTP localhost dev works without config. Do not set `advanced.useSecureCookies`.
-- `@cloudflare/vitest-pool-workers@0.18.x` uses the `cloudflareTest()` vite plugin + `readD1Migrations`/`applyD1Migrations` (`cloudflare:test`); the older `defineWorkersConfig` pattern is superseded.
-- Google flow: `authClient.signIn.social({ provider: "google", callbackURL: "/" })`; better-auth itself serves `/api/auth/callback/google` under the mounted wildcard and 302s back to `callbackURL`.
+- Ownership is ALWAYS the better-auth `user.id` column, never `hcpId` (SPEC decision 5).
+- Worker code never imports SPA code and vice versa (two TS programs). Wire types are duplicated on each side, following the `authClient.ts` precedent.
+- No new dependencies. Validation is hand-rolled; SQL is raw D1 prepared statements.
+- Migration files follow `migrations/0001_better_auth_init.sql` style: lowercase SQL, camelCase quoted column names.
+- `npx wrangler d1 migrations apply legend-db --local` for the local dev DB; `--remote` is Ryan-gated (Task 13 only).
+- Absolute display times, DD/MM formats (existing convention); epoch-ms integers in new DB columns.
+- Commit after every task (never leave verified work uncommitted).
+- Run `npm run test:workers` for worker tasks, `npm test` for lib tasks, `npx tsc -b` always.
+- Docs/commit prose: no em dashes.
 
-Global constraints:
-- `UserProfile` keeps its exact shape (`forename/surname/hcpId/grade`); `src/lib/userNotes.ts`, `grades.ts`, ownership and overreach logic must not change.
-- SPA files may be modified ONLY where this plan names them (`src/App.tsx`, `src/components/SignInPage.tsx`, `src/lib/session.ts`, new `src/lib/authClient.ts`). Everything else under `src/` outside `src/worker/` is frozen.
-- Secrets never enter git or chat: `.dev.vars` is gitignored (verified); prod secrets go via `wrangler secret put` reading from stdin. Never print secret values in command output or reports.
-- Remote D1 migrations and deploy are GATED on Ryan (T8). Local-only until then. Never `git push`.
-- Lint must stay clean (baseline 0 problems); suite baseline 182 tests / 23 files (node pool) must stay green; `npx tsc -b` clean; `npm run build` emits dist/client + dist/legend.
-- The working tree carries unrelated uncommitted changes (.gitignore, CLAUDE.md, .graphifyignore, src/data/patients/hyponatraemia001/, .dev.vars): NEVER `git add -A`/`git add .`; stage files explicitly.
-- Windows environment; commands are shell-neutral npm/npx unless noted.
+---
 
-## Tasks (bite-sized, ordered, independently verifiable)
+### Task 1: Migration 0002 (three work tables) + FK cascade proof
 
-### T1: Dependencies + secret plumbing
-- Files: `package.json`, `package-lock.json`, create `.dev.vars.example`; append one line to the (gitignored, DO NOT COMMIT) `.dev.vars`
-- Change:
-  1. `npm install better-auth` (expect >= 1.6.23) and `npm install -D @cloudflare/vitest-pool-workers` (expect >= 0.18.3; peer-compatible with the repo's vitest 4.1).
-  2. Create `.dev.vars.example` (committed):
-     ```
-     BETTER_AUTH_SECRET=
-     GOOGLE_CLIENT_ID=
-     GOOGLE_CLIENT_SECRET=
-     ```
-  3. Generate a secret and append to `.dev.vars` WITHOUT printing it: `echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> .dev.vars` (Git Bash has openssl). Ryan's Google credentials are already in the file — do not touch those lines.
-- Verify: `npm ls better-auth @cloudflare/vitest-pool-workers` clean; `grep -c "=" .dev.vars` returns 3 (count only — never cat the file); `npm test` still 182/23 green.
-- Commit (package.json, package-lock.json, .dev.vars.example only): `Deps: better-auth + vitest-pool-workers; dev secrets scaffold`
-- Depends on: none
+**Files:**
+- Create: `migrations/0002_user_work.sql`
+- Create: `src/worker/work.workers.test.ts` (first test only)
 
-### T2: Auth factory + Hono mount, smoke-proven (burns down the basePath uncertainty)
-- Files: create `src/worker/auth.ts`, modify `src/worker/index.ts`, regenerate `worker-configuration.d.ts`
-- Interfaces produced: `createAuth(env: Env, baseURL: string)` returning a better-auth instance; auth endpoints live under `/api/auth/*`.
-- Change:
-  1. `src/worker/auth.ts`:
-     ```ts
-     import { betterAuth } from "better-auth";
-     import { anonymous } from "better-auth/plugins";
+**Interfaces:**
+- Produces: tables `user_note`, `note_addendum`, `wrapup_attempt` with the exact columns below. Every later worker task queries them.
 
-     /** Same format as src/lib/userNotes.ts generateHcpId (kept separate so the
-      *  worker program never imports DOM-adjacent app code). */
-     function generateHcpId() {
-       return `d9${Math.floor(Math.random() * 90000 + 10000)}`;
-     }
+- [ ] **Step 1: Write the migration**
 
-     export function createAuth(env: Env, baseURL: string) {
-       return betterAuth({
-         database: env.DB,
-         baseURL,
-         basePath: "/api/auth",
-         secret: env.BETTER_AUTH_SECRET,
-         plugins: [anonymous({ emailDomainName: "legend.local" })],
-         socialProviders: {
-           google: {
-             clientId: env.GOOGLE_CLIENT_ID,
-             clientSecret: env.GOOGLE_CLIENT_SECRET,
-             prompt: "select_account",
-           },
-         },
-         user: {
-           additionalFields: {
-             forename: { type: "string", required: false },
-             surname: { type: "string", required: false },
-             grade: { type: "string", required: false },
-             hcpId: { type: "string", required: false, input: false },
-           },
-         },
-         databaseHooks: {
-           user: {
-             create: {
-               before: async (user) => ({ data: { ...user, hcpId: generateHcpId() } }),
-             },
-           },
-         },
-       });
-     }
-     ```
-     IMPORTANT: before writing, check `src/lib/userNotes.ts` `generateHcpId()` and copy its EXACT format (the snippet above is the planner's recollection — the real one wins; keep the two in sync and cross-reference in the comment).
-  2. `src/worker/index.ts` — add the mount ABOVE the health route:
-     ```ts
-     import { createAuth } from "./auth";
-     // ...existing app = new Hono<{ Bindings: Env }>().basePath("/api")
+```sql
+-- Migration number: 0002 	 2026-07-10
 
-     app.on(["GET", "POST"], "/auth/*", (c) =>
-       createAuth(c.env, new URL(c.req.url).origin).handler(c.req.raw),
-     );
-     ```
-  3. `npm run cf-typegen` — `Env` must now include `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (inferred from `.dev.vars`) alongside `DB`. Commit the regenerated file.
-- Verify (empirical smoke for the inferred basePath composition — DB-free, so it works before migrations):
-  - `npm run dev -- --port 5199 --strictPort` in background; `curl -s http://localhost:5199/api/auth/ok` returns better-auth's ok JSON (`{"ok":true}`); `curl -s http://localhost:5199/api/health` still works; kill the server (only the one you started; port 5173 belongs to someone else).
-  - If `/api/auth/ok` 404s: try `basePath: "/auth"` as the single permitted variation, re-test, and REPORT which composition worked — the reviewer needs to know.
-  - `npx tsc -b` clean; `npm test` still green (worker index change is additive).
-- Commit: `Auth server: better-auth factory (anonymous + Google + persona fields) mounted at /api/auth`
-- Depends on: T1
+create table "user_note" ("id" text not null primary key, "userId" text not null references "user" ("id") on delete cascade, "caseId" text not null, "status" text not null, "payload" text not null, "createdAt" integer not null, "updatedAt" integer not null);
 
-### T3: Schema -> D1 migrations (burns down the CLI uncertainty)
-- Files: create `migrations/0001_better_auth.sql` (via wrangler), possibly create `auth.cli.ts` (repo root, CLI-only), no src changes
-- Change, in order:
-  1. Try the CLI directly against the factory: `npx @better-auth/cli@latest generate --config src/worker/auth.ts --output .superpowers/sdd/auth-schema.sql -y`. (PR #5559 auto-stubs `cloudflare:workers`; the factory takes args, which the CLI cannot call — if it errors, step 2.)
-  2. Fallback: create `auth.cli.ts` at repo root exporting `export const auth = betterAuth({...})` with the IDENTICAL options object as `createAuth` but `database: {} as never` (schema generation reads config shape, not the connection), then `npx @better-auth/cli@latest generate --config auth.cli.ts --output .superpowers/sdd/auth-schema.sql -y`. Commit `auth.cli.ts` with a header comment "CLI schema generation only — never imported at runtime; keep options in sync with src/worker/auth.ts". Exclude it from tsconfig app/node programs if `tsc -b` complains (add to `tsconfig.node.json` include ONLY if needed for editor sanity).
-  3. If BOTH fail: STOP, report BLOCKED with exact errors. Do NOT hand-invent schema SQL.
-  4. Inspect the generated SQL: it must contain `user` (with `isAnonymous`, `forename`, `surname`, `grade`, `hcpId`), `session`, `account`, `verification` tables. Report the table/column list.
-  5. `npx wrangler d1 migrations create legend-db better_auth_init` -> creates `migrations/0001_better_auth_init.sql`; move the generated SQL into it.
-  6. `npx wrangler d1 migrations apply legend-db --local` (NEVER --remote in this task).
-- Verify: `npx wrangler d1 migrations list legend-db --local` shows it applied; `npx wrangler d1 execute legend-db --local --command "SELECT name FROM sqlite_master WHERE type='table'"` lists the four better-auth tables (+ d1_migrations); `npm test` green.
-- Commit (migrations/ + auth.cli.ts if created): `D1 migrations: better-auth schema (user+persona fields, session, account, verification)`
-- Depends on: T2
+create index "user_note_userId_caseId_idx" on "user_note" ("userId", "caseId");
 
-### T4: Real-D1 test project + auth behavior tests (TDD)
-- Files: create `vitest.workers.config.ts`, create `test/apply-migrations.ts`, create `src/worker/auth.workers.test.ts`, modify `vitest.config.ts` (one exclude line), modify `package.json` (one script)
-- Interfaces consumed: `createAuth(env, baseURL)`; migrations dir from T3.
-- Change:
-  1. `vitest.workers.config.ts` (repo root) per the current pool-workers API (verify plugin import name against installed version's README/types — research pinned `cloudflareTest()` + `readD1Migrations` from `@cloudflare/vitest-pool-workers`, superseding `defineWorkersConfig`; if the installed 0.18.x still ships `defineWorkersConfig` and not `cloudflareTest`, use what the installed package actually exports and report which):
-     ```ts
-     import path from "node:path";
-     import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
-     import { defineConfig, defineProject, mergeConfig } from "vitest/config";
+create table "note_addendum" ("id" text not null primary key, "userId" text not null references "user" ("id") on delete cascade, "caseId" text not null, "noteId" text not null, "body" text not null, "createdAt" integer not null);
 
-     export default defineConfig(async () => {
-       const migrations = await readD1Migrations(path.join(__dirname, "migrations"));
-       return mergeConfig(
-         {},
-         defineProject({
-           plugins: [
-             cloudflareTest({
-               wrangler: { configPath: "./wrangler.jsonc" },
-               miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
-             }),
-           ],
-           test: { include: ["src/worker/**/*.workers.test.ts"], setupFiles: ["./test/apply-migrations.ts"] },
-         }),
-       );
-     });
-     ```
-  2. `test/apply-migrations.ts`:
-     ```ts
-     import { applyD1Migrations, env } from "cloudflare:test";
+create index "note_addendum_userId_caseId_idx" on "note_addendum" ("userId", "caseId");
 
-     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
-     ```
-     (If `env` is not exported from `cloudflare:test` in the installed version, import it from `cloudflare:workers` per the fixture — use whichever the installed fixture pattern shows.)
-  3. TDD `src/worker/auth.workers.test.ts`. The `.workers.test.ts` suffix still matches the node pool's default `*.test.ts` include, so FIRST add `exclude: ["**/*.workers.test.ts", "**/node_modules/**"]` to the `test` block of the existing `vitest.config.ts` — the node pool must never load `cloudflare:test`. Then:
-     ```ts
-     import { env } from "cloudflare:test";
-     import { describe, expect, test } from "vitest";
-     import { createAuth } from "./auth";
+create table "wrapup_attempt" ("userId" text not null references "user" ("id") on delete cascade, "caseId" text not null, "text" text not null, "at" text not null, "signed" integer not null, "updatedAt" integer not null, primary key ("userId", "caseId"));
+```
 
-     describe("anonymous sign-in", () => {
-       test("creates a user with a server-generated hcpId and isAnonymous", async () => {
-         const auth = createAuth(env as unknown as Env, "http://localhost");
-         const res = await auth.api.signInAnonymous();
-         expect(res?.user).toBeTruthy();
-         const row = await env.DB.prepare("SELECT hcpId, isAnonymous FROM user WHERE id = ?")
-           .bind(res!.user.id)
-           .first<{ hcpId: string; isAnonymous: number }>();
-         expect(row?.hcpId).toMatch(/^d9\d+$/);
-         expect(row?.isAnonymous).toBe(1);
-       });
-     });
-     ```
-     RED first (config not yet wired -> cannot resolve `cloudflare:test`), then wire, then GREEN. The exact `auth.api.signInAnonymous()` server-call signature must be verified against docs (context7 /better-auth/better-auth, "server side anonymous sign in api") — if server-side anonymous sign-in isn't exposed via `auth.api`, drive it through the HTTP handler instead: `await auth.handler(new Request("http://localhost/api/auth/sign-in/anonymous", { method: "POST" }))` and assert the Set-Cookie + user row. Use whichever works; report which.
-  4. `package.json` script: `"test:workers": "vitest run --config vitest.workers.config.ts"`.
-- Verify: `npm run test:workers` green (>= 1 real-D1 test); `npm test` still 182/23 (node pool untouched by the new suffix exclusion); `npx tsc -b` clean (the workers test file lives in src/worker — already in the worker program; `cloudflare:test` types come from the pool-workers package — add its `/types` to tsconfig.worker.json `types` array only if tsc demands it, and report if so).
-- Commit: `Real-D1 tests: vitest-pool-workers project; anonymous sign-in creates hcpId`
-- Depends on: T3
+`status` is `'signed' | 'incomplete'`. `payload` is the full `ClinicalNote` JSON (display truth); `status` is mirrored into its own column for querying. `at` is the client-formatted DD/MM HH:MM stamp (display-only, matches the current `StoredAttempt`).
 
-### T5: Client — auth client, App gate on session, guest flow, sign-out
-- Files: create `src/lib/authClient.ts`, modify `src/App.tsx`, modify `src/components/SignInPage.tsx`, modify `src/lib/session.ts`
-- Interfaces produced: `authClient` (+ `useSession`); `SignInPage` gains props `{ mode: "signin" | "persona", initialName?: { forename: string; surname: string }, onComplete: (p: PersonaInput) => Promise<void>, onGoogle: () => void }` where `PersonaInput = { forename: string; surname: string; grade: Grade }`.
-- Change:
-  1. `src/lib/authClient.ts`:
-     ```ts
-     import { createAuthClient } from "better-auth/react";
-     import { anonymousClient, inferAdditionalFields } from "better-auth/client/plugins";
+- [ ] **Step 2: Write the failing cascade test**
 
-     // Explicit field schema instead of inferAdditionalFields<typeof auth>: importing
-     // the worker's auth type would drag workerd globals into the DOM program.
-     export const authClient = createAuthClient({
-       plugins: [
-         anonymousClient(),
-         inferAdditionalFields({
-           user: {
-             forename: { type: "string", required: false },
-             surname: { type: "string", required: false },
-             grade: { type: "string", required: false },
-             hcpId: { type: "string", required: false, input: false },
-           },
-         }),
-       ],
-     });
+`src/worker/work.workers.test.ts` (migrations auto-apply via `test/apply-migrations.ts`):
 
-     export const { useSession } = authClient;
-     ```
-     Verify the object-form `inferAdditionalFields` signature against docs in-task; if only the generic form exists, define a local `type AuthShape` mirroring the fields instead — do NOT import from src/worker.
-  2. `src/App.tsx` — replace the localStorage profile gate:
-     - Delete `parseUser` and the `usePersistentState(USER_KEY, "")` line (keep `USER_KEY` in session.ts for the sign-out sweep; it simply stops being written).
-     - Gate:
-       ```tsx
-       const { data: session, isPending } = useSession();
-       const user: UserProfile | null =
-         session?.user && session.user.forename && session.user.surname && session.user.grade && session.user.hcpId
-           ? {
-               forename: session.user.forename,
-               surname: session.user.surname,
-               grade: session.user.grade as Grade,
-               hcpId: session.user.hcpId,
-             }
-           : null;
+```ts
+import { env } from "cloudflare:test";
+import { describe, expect, test } from "vitest";
+import { createAuth } from "./auth";
 
-       if (isPending) return null; // brief blank while the session loads
-       if (!user) {
-         return (
-           <SignInPage
-             mode={session?.user ? "persona" : "signin"}
-             initialName={splitName(session?.user?.name)}
-             onComplete={async (p) => {
-               if (!session?.user) await authClient.signIn.anonymous();
-               await authClient.updateUser({ forename: p.forename, surname: p.surname, grade: p.grade });
-             }}
-             onGoogle={() => authClient.signIn.social({ provider: "google", callbackURL: "/" })}
-           />
-         );
-       }
-       ```
-       `splitName(name?: string)` = first token as forename, rest as surname (empty-safe); lives in App.tsx.
-       After `updateUser`, the session store refetches automatically; if the installed version does not auto-refetch, call `authClient.getSession()`/`useSession`'s `refetch` — implementer verifies behavior in dev and reports which was needed.
-     - Persona-complete definition: all four fields present. A returning Google user has them -> straight in. A fresh Google user (no persona yet) -> `mode: "persona"`.
-  3. `src/components/SignInPage.tsx` — keep the card, the disclaimers, the Hierarchy dropdown exactly as-is; changes:
-     - Accept the new props. In `signin` mode render the existing form (labels/copy unchanged) PLUS below the submit button: a divider and a `Sign in with Google` button (`type="button"`, `onClick={onGoogle}`, same `.signin-submit` styling with a `signin-google` modifier class; add minimal CSS to App.css reusing existing button styles — no redesign).
-     - In `persona` mode: same form, name inputs prefilled from `initialName`, submit label `Save and start training`, NO Google button.
-     - `submit` now calls `await onComplete({ forename, surname, grade })`; disable the button while the promise is pending (local `saving` state) to prevent double anonymous sign-ins. The `generateHcpId()` import and `hcpId` field go away (server owns it).
-  4. `src/lib/session.ts` — `signOut()` becomes async: call `authClient.signOut()` (import from `./authClient`) FIRST, then the existing `legend*` sweep + reload unchanged. Callers (`TopSystemBar` user bubble) may fire-and-forget: `void signOut()` — check the call site compiles; do not otherwise modify TopSystemBar.
-- Verify:
-  - `npx tsc -b` clean, `npm run lint` clean, `npm test` green, `npm run test:workers` green.
-  - Dev browser (port 5199, background, kill after): guest flow end-to-end — fill name+grade, Start training -> app opens on Patient Lists; `npx wrangler d1 execute legend-db --local --command "SELECT forename, surname, grade, hcpId, isAnonymous FROM user ORDER BY createdAt DESC LIMIT 1"` shows the persona row with a d9 hcpId and isAnonymous=1; write+sign a note in cholangitis001 and confirm authorship shows the persona name; user-bubble sign-out returns to the card and sweeps localStorage.
-- Commit: `Client auth: session-gated App, guest anonymous flow, async sign-out`
-- Depends on: T2 (mount), T3 (local tables). T4 not required but will exist.
+describe("user_work schema", () => {
+  test("deleting a user cascades to their work rows", async () => {
+    const auth = createAuth(env as unknown as Env, "http://localhost");
+    const res = await auth.api.signInAnonymous();
+    const userId = res!.user.id;
 
-### T6: Google sign-in + persona mode, browser-proven
-- Files: none new (T5 built the UI); this task is verification + fixes only, plus `src/App.css` if the Google button styling landed rough
-- Change: none planned — this task exercises the T5 `persona` mode with the real Google OAuth client (credentials already in `.dev.vars`).
-- Verify (dev browser, port 5199 — note: the Google OAuth client's registered origin is `http://localhost:5173`; if Google rejects the redirect because of the port, EITHER temporarily run dev on 5173 — requires Ryan to have freed the port — or ask Ryan to add the 5199 origin+redirect in Google Cloud Console; report which path was taken):
-  - Click `Sign in with Google` -> Google account chooser -> redirected back to `/` -> card in persona mode with name prefilled -> edit name, pick grade, save -> app opens.
-  - D1 local: user row has `isAnonymous` NULL/0, persona fields set, d9 hcpId; `account` table has a google row.
-  - Sign out; sign in with Google again -> NO persona form, straight to Patient Lists (returning-user path).
-  - Console: no errors.
-- Commit (only if fixes were needed): `Google flow fixes from browser verification`
-- Depends on: T5
+    await env.DB.prepare(
+      `INSERT INTO user_note (id, userId, caseId, status, payload, createdAt, updatedAt)
+       VALUES ('n1', ?1, 'cholangitis001', 'signed', '{}', 1, 1)`,
+    ).bind(userId).run();
+    await env.DB.prepare(
+      `INSERT INTO note_addendum (id, userId, caseId, noteId, body, createdAt)
+       VALUES ('a1', ?1, 'cholangitis001', 'n1', 'x', 1)`,
+    ).bind(userId).run();
+    await env.DB.prepare(
+      `INSERT INTO wrapup_attempt (userId, caseId, text, at, signed, updatedAt)
+       VALUES (?1, 'cholangitis001', 'x', '10/07 12:00', 1, 1)`,
+    ).bind(userId).run();
 
-### T7: Carry-overs + full gate
-- Files: `eslint.config.js`
-- Change: scoped globals for the worker — add after the existing `**/*.{ts,tsx}` block:
-  ```js
-  {
-    files: ['src/worker/**/*.ts'],
-    languageOptions: { globals: globals.serviceworker },
+    await env.DB.prepare(`DELETE FROM user WHERE id = ?1`).bind(userId).run();
+
+    for (const table of ["user_note", "note_addendum", "wrapup_attempt"]) {
+      const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE userId = ?1`)
+        .bind(userId)
+        .first<{ n: number }>();
+      expect(row?.n).toBe(0);
+    }
+  });
+});
+```
+
+- [ ] **Step 3: Run with the migration file DELETED (or stashed), verify the test fails** — `npm run test:workers`. Expected: FAIL with `no such table: user_note`. (This proves the test needs the migration; restore the file after.)
+- [ ] **Step 4: Run with the migration present, verify PASS** — `npm run test:workers` (3 tests total: 2 existing auth + this one).
+- [ ] **Step 5: Apply locally for the dev server** — `npx wrangler d1 migrations apply legend-db --local`. Expected output lists `0002_user_work.sql` as applied.
+- [ ] **Step 6: Commit** — `git add migrations src/worker/work.workers.test.ts && git commit -m "Phase 3 T1: user work tables (user_note, note_addendum, wrapup_attempt)"`
+
+---
+
+### Task 2: work router — session middleware + GET /work (empty case)
+
+**Files:**
+- Create: `src/worker/work.ts`
+- Modify: `src/worker/index.ts`
+- Test: `src/worker/work.workers.test.ts`
+
+**Interfaces:**
+- Consumes: `createAuth(env, origin)` from `./auth`; Task 1 tables.
+- Produces: `export const work: Hono` mounted under `/api`; `GET /api/cases/:caseId/work` returning `{ notes: <ClinicalNote payloads>[], addenda: {noteId,body,createdAt}[], attempt: {text,at,signed}|null }`; the `userId` Hono variable for later routes. Test helpers `anonCookie()` and `callWorker(path, init)` reused by Tasks 3-7.
+
+- [ ] **Step 1: Write the failing tests** (append to `work.workers.test.ts`):
+
+```ts
+import { applySetCookies } from "better-auth/cookies";
+import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+import worker from "./index";
+
+async function anonCookie(): Promise<string> {
+  const auth = createAuth(env as unknown as Env, "http://localhost");
+  const signIn = await auth.api.signInAnonymous({ returnHeaders: true });
+  const h = new Headers();
+  applySetCookies(h, signIn.headers.getSetCookie());
+  const cookie = h.get("cookie");
+  if (!cookie) throw new Error("no session cookie");
+  return cookie;
+}
+
+async function callWorker(path: string, init?: RequestInit): Promise<Response> {
+  const ctx = createExecutionContext();
+  const res = await worker.fetch(
+    new Request(`http://localhost${path}`, init) as Parameters<typeof worker.fetch>[0],
+    env as unknown as Env,
+    ctx,
+  );
+  await waitOnExecutionContext(ctx);
+  return res as unknown as Response;
+}
+
+describe("GET /api/cases/:caseId/work", () => {
+  test("401 without a session", async () => {
+    const res = await callWorker("/api/cases/cholangitis001/work");
+    expect(res.status).toBe(401);
+  });
+
+  test("empty work for a fresh user", async () => {
+    const cookie = await anonCookie();
+    const res = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ notes: [], addenda: [], attempt: null });
+  });
+});
+```
+
+(If `tsc` accepts `Request`/`Response` without the casts, drop them. In Task 7 the default export becomes an `ExportedHandler` object; until then `worker` is the Hono app, whose `.fetch(req, env, ctx)` has the same shape, so these helpers survive unchanged.)
+
+- [ ] **Step 2: Run, verify FAIL** — `npm run test:workers`. Expected: 404 (route missing), not 401.
+- [ ] **Step 3: Implement `src/worker/work.ts`**
+
+```ts
+import { Hono } from "hono";
+import { createAuth } from "./auth";
+
+/**
+ * Session-gated CRUD for the trainee's work (notes, addenda, wrap-up
+ * attempts). Ownership is always the better-auth user id; the hcpId inside
+ * a note payload is display data only.
+ */
+type WorkEnv = { Bindings: Env; Variables: { userId: string } };
+
+export const work = new Hono<WorkEnv>();
+
+work.use("*", async (c, next) => {
+  const auth = createAuth(c.env, new URL(c.req.url).origin);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session) return c.json({ error: "unauthorized" }, 401);
+  c.set("userId", session.user.id);
+  await next();
+});
+
+work.get("/cases/:caseId/work", async (c) => {
+  const userId = c.get("userId");
+  const caseId = c.req.param("caseId");
+  const [notes, addenda, attempt] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT payload FROM user_note WHERE userId = ?1 AND caseId = ?2 ORDER BY createdAt`,
+    ).bind(userId, caseId).all<{ payload: string }>(),
+    c.env.DB.prepare(
+      `SELECT noteId, body, createdAt FROM note_addendum WHERE userId = ?1 AND caseId = ?2 ORDER BY createdAt`,
+    ).bind(userId, caseId).all<{ noteId: string; body: string; createdAt: number }>(),
+    c.env.DB.prepare(
+      `SELECT text, at, signed FROM wrapup_attempt WHERE userId = ?1 AND caseId = ?2`,
+    ).bind(userId, caseId).first<{ text: string; at: string; signed: number }>(),
+  ]);
+  return c.json({
+    notes: notes.results.map((r) => JSON.parse(r.payload) as unknown),
+    addenda: addenda.results,
+    attempt: attempt ? { text: attempt.text, at: attempt.at, signed: attempt.signed === 1 } : null,
+  });
+});
+```
+
+- [ ] **Step 4: Mount it in `src/worker/index.ts`.** Order matters: `/auth/*` and `/health` are registered BEFORE `app.route("/", work)`, so the work middleware never runs for them.
+
+```ts
+import { Hono } from "hono";
+import { createAuth } from "./auth";
+import { work } from "./work";
+
+const app = new Hono<{ Bindings: Env }>().basePath("/api");
+
+app.on(["GET", "POST"], "/auth/*", (c) =>
+  createAuth(c.env, new URL(c.req.url).origin).handler(c.req.raw),
+);
+
+app.get("/health", async (c) => {
+  let db = false;
+  try {
+    const row = await c.env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+    db = row?.ok === 1;
+  } catch {
+    // Health must answer even when the DB binding is missing or broken.
+  }
+  return c.json({ ok: true, db });
+});
+
+app.route("/", work);
+
+export default app;
+```
+
+- [ ] **Step 5: Run, verify PASS** — `npm run test:workers` (5 tests). Also `npx tsc -b`.
+- [ ] **Step 6: Commit** — `git commit -m "Phase 3 T2: session-gated work router, GET case work"`
+
+---
+
+### Task 3: POST note (Sign/Pend) + cross-user isolation
+
+**Files:**
+- Modify: `src/worker/work.ts`
+- Test: `src/worker/work.workers.test.ts`
+
+**Interfaces:**
+- Consumes: Task 2 middleware and test helpers.
+- Produces: `POST /api/cases/:caseId/notes` with body `{ status: "signed"|"incomplete", payload: object }`; responds 201 with the stored payload (server-assigned `payload.id` = row id, a UUID). Later tasks rely on `payload.id` being the row id.
+
+- [ ] **Step 1: Failing tests**
+
+```ts
+describe("POST /api/cases/:caseId/notes", () => {
+  test("creates, assigns a server id, and roundtrips through GET", async () => {
+    const cookie = await anonCookie();
+    const payload = { kind: "note", noteType: "Progress Note", status: "signed", body: "AKI resolving" };
+    const res = await callWorker("/api/cases/cholangitis001/notes", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ status: "signed", payload }),
+    });
+    expect(res.status).toBe(201);
+    const stored = (await res.json()) as { id: string; body: string };
+    expect(stored.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(stored.body).toBe("AKI resolving");
+
+    const workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    const data = (await workRes.json()) as { notes: { id: string }[] };
+    expect(data.notes.map((n) => n.id)).toEqual([stored.id]);
+  });
+
+  test("rejects a malformed body", async () => {
+    const cookie = await anonCookie();
+    const res = await callWorker("/api/cases/cholangitis001/notes", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ status: "published", payload: null }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("one user's notes are invisible to another", async () => {
+    const cookieA = await anonCookie();
+    const cookieB = await anonCookie();
+    await callWorker("/api/cases/cholangitis001/notes", {
+      method: "POST",
+      headers: { cookie: cookieA, "content-type": "application/json" },
+      body: JSON.stringify({ status: "incomplete", payload: { body: "mine" } }),
+    });
+    const res = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie: cookieB } });
+    const data = (await res.json()) as { notes: unknown[] };
+    expect(data.notes).toEqual([]);
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL (404)** — `npm run test:workers`
+- [ ] **Step 3: Implement** (append to `work.ts`):
+
+```ts
+const NOTE_STATUSES = new Set(["signed", "incomplete"]);
+
+function parseNoteBody(raw: unknown): { status: string; payload: Record<string, unknown> } | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const { status, payload } = raw as { status?: unknown; payload?: unknown };
+  if (typeof status !== "string" || !NOTE_STATUSES.has(status)) return null;
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return null;
+  return { status, payload: payload as Record<string, unknown> };
+}
+
+work.post("/cases/:caseId/notes", async (c) => {
+  const parsed = parseNoteBody(await c.req.json().catch(() => null));
+  if (!parsed) return c.json({ error: "bad request" }, 400);
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  // The row id is the note's identity everywhere, including inside the payload.
+  const payload = { ...parsed.payload, id, status: parsed.status };
+  await c.env.DB.prepare(
+    `INSERT INTO user_note (id, userId, caseId, status, payload, createdAt, updatedAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)`,
+  )
+    .bind(id, c.get("userId"), c.req.param("caseId"), parsed.status, JSON.stringify(payload), now)
+    .run();
+  return c.json(payload, 201);
+});
+```
+
+- [ ] **Step 4: Run, verify PASS** — `npm run test:workers`; `npx tsc -b`
+- [ ] **Step 5: Commit** — `git commit -m "Phase 3 T3: POST user note with server-assigned id"`
+
+---
+
+### Task 4: PUT /notes/:id (refile) + DELETE /notes/:id, ownership-checked
+
+**Files:**
+- Modify: `src/worker/work.ts`
+- Test: `src/worker/work.workers.test.ts`
+
+**Interfaces:**
+- Consumes: Tasks 2-3.
+- Produces: `PUT /api/notes/:id` body `{ status, payload }` → 200 with the stored payload, 404 if not the caller's note; `DELETE /api/notes/:id` → 204, 404 if not the caller's note.
+
+- [ ] **Step 1: Failing tests**
+
+```ts
+async function createNote(cookie: string, body = "v1", status = "incomplete") {
+  const res = await callWorker("/api/cases/cholangitis001/notes", {
+    method: "POST",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ status, payload: { body } }),
+  });
+  return (await res.json()) as { id: string };
+}
+
+describe("PUT and DELETE /api/notes/:id", () => {
+  test("refile replaces the payload in place", async () => {
+    const cookie = await anonCookie();
+    const note = await createNote(cookie);
+    const res = await callWorker(`/api/notes/${note.id}`, {
+      method: "PUT",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ status: "signed", payload: { id: note.id, body: "v2" } }),
+    });
+    expect(res.status).toBe(200);
+    const workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    const data = (await workRes.json()) as { notes: { id: string; body: string; status: string }[] };
+    expect(data.notes).toHaveLength(1);
+    expect(data.notes[0]).toMatchObject({ id: note.id, body: "v2", status: "signed" });
+  });
+
+  test("cannot refile or delete another user's note", async () => {
+    const owner = await anonCookie();
+    const attacker = await anonCookie();
+    const note = await createNote(owner);
+    const put = await callWorker(`/api/notes/${note.id}`, {
+      method: "PUT",
+      headers: { cookie: attacker, "content-type": "application/json" },
+      body: JSON.stringify({ status: "signed", payload: { body: "stolen" } }),
+    });
+    expect(put.status).toBe(404);
+    const del = await callWorker(`/api/notes/${note.id}`, { method: "DELETE", headers: { cookie: attacker } });
+    expect(del.status).toBe(404);
+  });
+
+  test("delete removes the note", async () => {
+    const cookie = await anonCookie();
+    const note = await createNote(cookie);
+    const del = await callWorker(`/api/notes/${note.id}`, { method: "DELETE", headers: { cookie } });
+    expect(del.status).toBe(204);
+    const workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    expect(((await workRes.json()) as { notes: unknown[] }).notes).toEqual([]);
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL** — `npm run test:workers`
+- [ ] **Step 3: Implement**
+
+```ts
+work.put("/notes/:id", async (c) => {
+  const parsed = parseNoteBody(await c.req.json().catch(() => null));
+  if (!parsed) return c.json({ error: "bad request" }, 400);
+  const id = c.req.param("id");
+  const payload = { ...parsed.payload, id, status: parsed.status };
+  const res = await c.env.DB.prepare(
+    `UPDATE user_note SET status = ?1, payload = ?2, updatedAt = ?3 WHERE id = ?4 AND userId = ?5`,
+  )
+    .bind(parsed.status, JSON.stringify(payload), Date.now(), id, c.get("userId"))
+    .run();
+  if (res.meta.changes === 0) return c.json({ error: "not found" }, 404);
+  return c.json(payload);
+});
+
+work.delete("/notes/:id", async (c) => {
+  const res = await c.env.DB.prepare(
+    `DELETE FROM user_note WHERE id = ?1 AND userId = ?2`,
+  )
+    .bind(c.req.param("id"), c.get("userId"))
+    .run();
+  if (res.meta.changes === 0) return c.json({ error: "not found" }, 404);
+  return c.body(null, 204);
+});
+```
+
+- [ ] **Step 4: Run, verify PASS**; `npx tsc -b`
+- [ ] **Step 5: Commit** — `git commit -m "Phase 3 T4: refile and delete user notes, ownership-checked"`
+
+---
+
+### Task 5: Addenda POST + attempt PUT/DELETE
+
+**Files:**
+- Modify: `src/worker/work.ts`
+- Test: `src/worker/work.workers.test.ts`
+
+**Interfaces:**
+- Consumes: Tasks 2-4.
+- Produces: `POST /api/notes/:id/addenda` body `{ caseId, body }` → 201 `{ noteId, body, createdAt }`; `PUT /api/cases/:caseId/attempt` body `{ text, at, signed }` → 200 (upsert); `DELETE /api/cases/:caseId/attempt` → 204. Addenda are legal against ANY note id (static case notes included), so there is deliberately no note-existence check.
+
+- [ ] **Step 1: Failing tests**
+
+```ts
+describe("addenda and attempts", () => {
+  test("addendum rows accumulate and come back in order", async () => {
+    const cookie = await anonCookie();
+    for (const body of ["first", "second"]) {
+      const res = await callWorker("/api/notes/note-adm-1/addenda", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ caseId: "cholangitis001", body }),
+      });
+      expect(res.status).toBe(201);
+    }
+    const workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    const data = (await workRes.json()) as { addenda: { noteId: string; body: string }[] };
+    expect(data.addenda.map((a) => a.body)).toEqual(["first", "second"]);
+    expect(data.addenda[0].noteId).toBe("note-adm-1");
+  });
+
+  test("attempt upserts and clears", async () => {
+    const cookie = await anonCookie();
+    const put = (text: string) =>
+      callWorker("/api/cases/cholangitis001/attempt", {
+        method: "PUT",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ text, at: "10/07 12:00", signed: true }),
+      });
+    expect((await put("v1")).status).toBe(200);
+    expect((await put("v2")).status).toBe(200);
+    let workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    expect(((await workRes.json()) as { attempt: { text: string } }).attempt.text).toBe("v2");
+
+    const del = await callWorker("/api/cases/cholangitis001/attempt", { method: "DELETE", headers: { cookie } });
+    expect(del.status).toBe(204);
+    workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
+    expect(((await workRes.json()) as { attempt: unknown }).attempt).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL**
+- [ ] **Step 3: Implement**
+
+```ts
+work.post("/notes/:id/addenda", async (c) => {
+  const raw = (await c.req.json().catch(() => null)) as { caseId?: unknown; body?: unknown } | null;
+  if (!raw || typeof raw.caseId !== "string" || typeof raw.body !== "string" || raw.body.length === 0)
+    return c.json({ error: "bad request" }, 400);
+  const row = {
+    id: crypto.randomUUID(),
+    noteId: c.req.param("id"),
+    body: raw.body,
+    createdAt: Date.now(),
+  };
+  await c.env.DB.prepare(
+    `INSERT INTO note_addendum (id, userId, caseId, noteId, body, createdAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+  )
+    .bind(row.id, c.get("userId"), raw.caseId, row.noteId, row.body, row.createdAt)
+    .run();
+  return c.json({ noteId: row.noteId, body: row.body, createdAt: row.createdAt }, 201);
+});
+
+work.put("/cases/:caseId/attempt", async (c) => {
+  const raw = (await c.req.json().catch(() => null)) as
+    | { text?: unknown; at?: unknown; signed?: unknown }
+    | null;
+  if (!raw || typeof raw.text !== "string" || typeof raw.at !== "string" || typeof raw.signed !== "boolean")
+    return c.json({ error: "bad request" }, 400);
+  await c.env.DB.prepare(
+    `INSERT INTO wrapup_attempt (userId, caseId, text, at, signed, updatedAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+     ON CONFLICT (userId, caseId) DO UPDATE SET text = ?3, at = ?4, signed = ?5, updatedAt = ?6`,
+  )
+    .bind(c.get("userId"), c.req.param("caseId"), raw.text, raw.at, raw.signed ? 1 : 0, Date.now())
+    .run();
+  return c.json({ ok: true });
+});
+
+work.delete("/cases/:caseId/attempt", async (c) => {
+  await c.env.DB.prepare(
+    `DELETE FROM wrapup_attempt WHERE userId = ?1 AND caseId = ?2`,
+  )
+    .bind(c.get("userId"), c.req.param("caseId"))
+    .run();
+  return c.body(null, 204);
+});
+```
+
+- [ ] **Step 4: Run, verify PASS**; `npx tsc -b`
+- [ ] **Step 5: Commit** — `git commit -m "Phase 3 T5: addenda and wrap-up attempt endpoints"`
+
+---
+
+### Task 6: Guest-to-Google re-key (onLinkAccount)
+
+**Files:**
+- Create: `src/worker/rekey.ts`
+- Modify: `src/worker/auth.ts`, `auth.cli.ts`
+- Test: `src/worker/work.workers.test.ts`
+
+**Interfaces:**
+- Consumes: Task 1 tables.
+- Produces: `rekeyUserWork(db: D1Database, fromUserId: string, toUserId: string): Promise<void>`, wired into `anonymous({ onLinkAccount })`.
+
+**Why it must be inside onLinkAccount:** the anonymous plugin DELETES the anonymous user after linking, and our FKs cascade. `onLinkAccount` fires before that deletion; re-keying there moves the rows out of the blast radius.
+
+- [ ] **Step 1: Failing test** (tests the helper directly; driving a real Google link in miniflare is not possible):
+
+```ts
+import { rekeyUserWork } from "./rekey";
+
+describe("rekeyUserWork", () => {
+  test("moves all three tables to the new user, guest attempt winning conflicts", async () => {
+    const auth = createAuth(env as unknown as Env, "http://localhost");
+    const anon = (await auth.api.signInAnonymous())!.user.id;
+    const google = (await auth.api.signInAnonymous())!.user.id; // stand-in row for the linked account
+
+    const seed = (userId: string, text: string) =>
+      env.DB.prepare(
+        `INSERT INTO wrapup_attempt (userId, caseId, text, at, signed, updatedAt)
+         VALUES (?1, 'cholangitis001', ?2, '10/07 12:00', 1, 1)`,
+      ).bind(userId, text).run();
+    await seed(anon, "guest attempt");
+    await seed(google, "old google attempt");
+    await env.DB.prepare(
+      `INSERT INTO user_note (id, userId, caseId, status, payload, createdAt, updatedAt)
+       VALUES ('rk-n1', ?1, 'cholangitis001', 'signed', '{}', 1, 1)`,
+    ).bind(anon).run();
+    await env.DB.prepare(
+      `INSERT INTO note_addendum (id, userId, caseId, noteId, body, createdAt)
+       VALUES ('rk-a1', ?1, 'cholangitis001', 'rk-n1', 'x', 1)`,
+    ).bind(anon).run();
+
+    await rekeyUserWork(env.DB, anon, google);
+
+    const note = await env.DB.prepare(`SELECT userId FROM user_note WHERE id = 'rk-n1'`).first<{ userId: string }>();
+    expect(note?.userId).toBe(google);
+    const add = await env.DB.prepare(`SELECT userId FROM note_addendum WHERE id = 'rk-a1'`).first<{ userId: string }>();
+    expect(add?.userId).toBe(google);
+    const attempts = await env.DB.prepare(
+      `SELECT text FROM wrapup_attempt WHERE userId = ?1`,
+    ).bind(google).all<{ text: string }>();
+    expect(attempts.results.map((r) => r.text)).toEqual(["guest attempt"]);
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL** (module missing)
+- [ ] **Step 3: Implement `src/worker/rekey.ts`**
+
+```ts
+/**
+ * Move a guest's work to the account they just linked. Runs inside
+ * onLinkAccount, BEFORE the anonymous plugin deletes the anonymous user
+ * (whose deletion would cascade the rows away). UPDATE OR REPLACE on
+ * wrapup_attempt: if the target account already has an attempt for the same
+ * case, the guest's (their live session's) attempt wins.
+ */
+export async function rekeyUserWork(
+  db: D1Database,
+  fromUserId: string,
+  toUserId: string,
+): Promise<void> {
+  await db.batch([
+    db.prepare(`UPDATE user_note SET userId = ?2 WHERE userId = ?1`).bind(fromUserId, toUserId),
+    db.prepare(`UPDATE note_addendum SET userId = ?2 WHERE userId = ?1`).bind(fromUserId, toUserId),
+    db
+      .prepare(`UPDATE OR REPLACE wrapup_attempt SET userId = ?2 WHERE userId = ?1`)
+      .bind(fromUserId, toUserId),
+  ]);
+}
+```
+
+- [ ] **Step 4: Wire into `src/worker/auth.ts`** (only the plugins line changes):
+
+```ts
+import { rekeyUserWork } from "./rekey";
+// ...
+    plugins: [
+      anonymous({
+        emailDomainName: "legend.local",
+        onLinkAccount: async ({ anonymousUser, newUser }) => {
+          await rekeyUserWork(env.DB, anonymousUser.user.id, newUser.user.id);
+        },
+      }),
+    ],
+```
+
+**Keep `auth.cli.ts` in sync** (its options must stay identical to `createAuth`'s so CLI schema generation stays truthful): add the same `anonymous({ emailDomainName: "legend.local", onLinkAccount: async () => {} })` shape there (no-op body; its stub DB has no work tables). `onLinkAccount` does not affect the generated schema, so `migrations/` output is unchanged; note the sync in a comment.
+
+- [ ] **Step 5: Run, verify PASS** — `npm run test:workers`; `npx tsc -b`
+- [ ] **Step 6: Commit** — `git commit -m "Phase 3 T6: re-key guest work to the linked account"`
+
+---
+
+### Task 7: Anon purge (cron)
+
+**Files:**
+- Create: `src/worker/purge.ts`
+- Modify: `src/worker/index.ts`, `wrangler.jsonc`
+- Test: `src/worker/work.workers.test.ts`
+
+**Interfaces:**
+- Consumes: better-auth `user`/`session` tables.
+- Produces: `purgeStaleAnonUsers(db: D1Database, cutoffIso: string): Promise<number>`; the worker default export becomes `{ fetch, scheduled }`.
+
+- [ ] **Step 1: Failing tests.** The first test pins the date format the purge comparison depends on (better-auth writes ISO-8601 strings); if better-auth ever changes it, this fails loudly instead of the purge silently matching nothing.
+
+```ts
+import { purgeStaleAnonUsers } from "./purge";
+
+describe("purgeStaleAnonUsers", () => {
+  test("session expiry is stored as an ISO string (purge comparison depends on it)", async () => {
+    await anonCookie();
+    const row = await env.DB.prepare(`SELECT expiresAt FROM session LIMIT 1`).first<{ expiresAt: string }>();
+    expect(String(row?.expiresAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("purges anon users with no live session, keeps active ones", async () => {
+    const auth = createAuth(env as unknown as Env, "http://localhost");
+    const stale = (await auth.api.signInAnonymous())!.user.id;
+    const active = (await auth.api.signInAnonymous())!.user.id;
+    await env.DB.prepare(`UPDATE session SET expiresAt = '2020-01-01T00:00:00.000Z' WHERE userId = ?1`)
+      .bind(stale)
+      .run();
+    await env.DB.prepare(
+      `INSERT INTO user_note (id, userId, caseId, status, payload, createdAt, updatedAt)
+       VALUES ('stale-n1', ?1, 'cholangitis001', 'signed', '{}', 1, 1)`,
+    ).bind(stale).run();
+
+    const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    await purgeStaleAnonUsers(env.DB, cutoff);
+
+    expect(await env.DB.prepare(`SELECT id FROM user WHERE id = ?1`).bind(stale).first()).toBeNull();
+    expect(await env.DB.prepare(`SELECT id FROM user_note WHERE id = 'stale-n1'`).first()).toBeNull();
+    expect(await env.DB.prepare(`SELECT id FROM user WHERE id = ?1`).bind(active).first()).not.toBeNull();
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL**
+- [ ] **Step 3: Implement `src/worker/purge.ts`**
+
+```ts
+/**
+ * Delete anonymous users whose every session expired before the cutoff
+ * (no activity in ~30 days; guest sessions live 7 days, so an active guest
+ * always has a fresher session). FK cascades remove their notes, addenda,
+ * and attempts. Google-linked users are never anonymous: the anonymous
+ * plugin deletes the anon row at link time (after Task 6's re-key).
+ */
+export async function purgeStaleAnonUsers(db: D1Database, cutoffIso: string): Promise<number> {
+  const res = await db
+    .prepare(
+      `DELETE FROM user WHERE isAnonymous = 1 AND NOT EXISTS (
+         SELECT 1 FROM session WHERE session.userId = user.id AND session.expiresAt > ?1
+       )`,
+    )
+    .bind(cutoffIso)
+    .run();
+  return res.meta.changes;
+}
+```
+
+- [ ] **Step 4: Export a scheduled handler from `src/worker/index.ts`** (replace the bottom `export default app`):
+
+```ts
+import { purgeStaleAnonUsers } from "./purge";
+
+const PURGE_AFTER_DAYS = 30;
+
+export default {
+  fetch: app.fetch,
+  scheduled: async (_controller, env) => {
+    const cutoff = new Date(Date.now() - PURGE_AFTER_DAYS * 86_400_000).toISOString();
+    await purgeStaleAnonUsers(env.DB, cutoff);
   },
-  ```
-  (`globals.serviceworker` is the closest published set to workerd: fetch/Request/Response/caches/crypto without DOM. If lint then flags anything real in src/worker, report rather than sprinkling disables.)
-- Verify: `npm run lint` clean; `npx tsc -b` clean; `npm test` 182/23+; `npm run test:workers` green; `npm run build` emits dist/client + dist/legend.
-- Commit: `Lint: workerd-appropriate globals for src/worker`
-- Depends on: T5 (worker code final shape)
+} satisfies ExportedHandler<Env>;
+```
 
-### T8: Ship — GATED, requires Ryan's explicit go
-- Files: none; STATUS.md update after
-- Change, in order (each step names its owner):
-  1. Secrets to prod (implementer, without printing values): for each of `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: extract the value from `.dev.vars` and pipe to `npx wrangler secret put <NAME>` via stdin (e.g. `grep '^NAME=' .dev.vars | cut -d= -f2- | npx wrangler secret put NAME`).
-  2. Remote migrations (Ryan-gated — this touches the production database): `npx wrangler d1 migrations apply legend-db --remote`.
-  3. Deploy: `npm run deploy` (NEVER bare `wrangler deploy`).
-- Verify (live):
-  - `https://legend.ryanhocn.workers.dev/api/auth/ok` -> ok JSON; `/api/health` still `{"ok":true,"db":true}`.
-  - Browser on the live site: guest flow end-to-end; Google flow (origin + redirect already registered for the prod URL); returning-Google path; sign-out.
-  - Update STATUS.md (phase 2 shipped) + ledger; commit.
-- Depends on: T6, T7, and Ryan's approval.
+- [ ] **Step 5: Add the cron to `wrangler.jsonc`** (after `"d1_databases"`):
 
-## Verification target (whole feature)
+```jsonc
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  }
+```
 
-`npm test` (node pool, >= 182 green) && `npm run test:workers` (real-D1 auth tests green) && `npx tsc -b` && `npm run lint` (clean) && `npm run build` (dist/client + dist/legend) && dev browser: all three sign-in flows (guest, first Google, returning Google) + sign-out sweep. Live after gated T8: same three flows on legend.ryanhocn.workers.dev with `/api/health` and `/api/auth/ok` green.
+Run `npm run cf-typegen` (wrangler config changed; crons add no bindings but this keeps the generated types honest).
+
+- [ ] **Step 6: Run, verify PASS** — `npm run test:workers`; `npx tsc -b`; `npm run build` (the export-shape change must not break the Cloudflare vite plugin); `npm run dev` still serves the SPA + `/api/health`.
+- [ ] **Step 7: Commit** — `git commit -m "Phase 3 T7: daily purge of stale anonymous users"`
+
+---
+
+### Task 8: Client lib — api.ts, foldAddenda, buildUserNote id handoff
+
+**Files:**
+- Create: `src/lib/api.ts`
+- Modify: `src/lib/userNotes.ts`
+- Test: `src/lib/userNotes.test.ts`
+
+**Interfaces:**
+- Consumes: worker routes (Tasks 2-5).
+- Produces (used by Tasks 9-10):
+
+```ts
+// api.ts
+export type StoredAttempt = { text: string; at: string; signed: boolean };
+export type AddendumRow = { noteId: string; body: string; createdAt: number };
+export type CaseWork = { notes: ClinicalNote[]; addenda: AddendumRow[]; attempt: StoredAttempt | null };
+export class ApiError extends Error { status: number }
+export function fetchCaseWork(caseId: string): Promise<CaseWork>
+export function apiCreateNote(caseId: string, note: ClinicalNote): Promise<ClinicalNote>
+export function apiRefileNote(note: ClinicalNote): Promise<ClinicalNote>
+export function apiDeleteNote(id: string): Promise<void>
+export function apiAddAddendum(caseId: string, noteId: string, body: string): Promise<AddendumRow>
+export function apiPutAttempt(caseId: string, attempt: StoredAttempt): Promise<void>
+export function apiDeleteAttempt(caseId: string): Promise<void>
+// userNotes.ts addition
+export function foldAddenda(rows: { noteId: string; body: string; createdAt: number }[]): Record<string, string>
+```
+
+- [ ] **Step 1: Failing node tests** (append to `src/lib/userNotes.test.ts`):
+
+```ts
+import { foldAddenda } from "./userNotes";
+
+describe("foldAddenda", () => {
+  it("folds rows into per-note blocks in createdAt order", () => {
+    const folded = foldAddenda([
+      { noteId: "n1", body: "second", createdAt: 2 },
+      { noteId: "n1", body: "first", createdAt: 1 },
+      { noteId: "n2", body: "only", createdAt: 3 },
+    ]);
+    expect(folded["n1"]).toBe("first\n\nsecond");
+    expect(folded["n2"]).toBe("only");
+  });
+  it("returns an empty record for no rows", () => {
+    expect(foldAddenda([])).toEqual({});
+  });
+});
+```
+
+Also update the existing `buildUserNote` test expectations: `id` becomes `""` (placeholder; the server assigns the real id on POST).
+
+- [ ] **Step 2: Run, verify FAIL** — `npm test`
+- [ ] **Step 3: Implement.** In `userNotes.ts`, change `buildUserNote`'s id line to `id: "",` (comment: the server assigns the real id when the note is POSTed) and add:
+
+```ts
+/** Fold server addendum rows into the per-note display blocks. */
+export function foldAddenda(
+  rows: { noteId: string; body: string; createdAt: number }[],
+): Record<string, string> {
+  const folded: Record<string, string> = {};
+  for (const row of [...rows].sort((a, b) => a.createdAt - b.createdAt)) {
+    folded[row.noteId] = appendAddendum(folded[row.noteId], row.body);
+  }
+  return folded;
+}
+```
+
+Create `src/lib/api.ts`:
+
+```ts
+import type { ClinicalNote } from "../types";
+
+/** Thin fetch wrapper for the /api work endpoints. Pure DOM fetch; no React. */
+
+export type StoredAttempt = { text: string; at: string; signed: boolean };
+export type AddendumRow = { noteId: string; body: string; createdAt: number };
+export type CaseWork = {
+  notes: ClinicalNote[];
+  addenda: AddendumRow[];
+  attempt: StoredAttempt | null;
+};
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) throw new ApiError(res.status, `${init?.method ?? "GET"} ${path} -> ${res.status}`);
+  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+}
+
+export const fetchCaseWork = (caseId: string) => request<CaseWork>(`/cases/${caseId}/work`);
+
+export const apiCreateNote = (caseId: string, note: ClinicalNote) =>
+  request<ClinicalNote>(`/cases/${caseId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ status: note.status, payload: note }),
+  });
+
+export const apiRefileNote = (note: ClinicalNote) =>
+  request<ClinicalNote>(`/notes/${note.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ status: note.status, payload: note }),
+  });
+
+export const apiDeleteNote = (id: string) =>
+  request<void>(`/notes/${id}`, { method: "DELETE" });
+
+export const apiAddAddendum = (caseId: string, noteId: string, body: string) =>
+  request<AddendumRow>(`/notes/${noteId}/addenda`, {
+    method: "POST",
+    body: JSON.stringify({ caseId, body }),
+  });
+
+export const apiPutAttempt = (caseId: string, attempt: StoredAttempt) =>
+  request<void>(`/cases/${caseId}/attempt`, {
+    method: "PUT",
+    body: JSON.stringify(attempt),
+  });
+
+export const apiDeleteAttempt = (caseId: string) =>
+  request<void>(`/cases/${caseId}/attempt`, { method: "DELETE" });
+```
+
+- [ ] **Step 4: Run, verify PASS** — `npm test`; `npx tsc -b`
+- [ ] **Step 5: Commit** — `git commit -m "Phase 3 T8: api client + addenda folding, server-assigned note ids"`
+
+---
+
+### Task 9: useCaseWork hook
+
+**Files:**
+- Create: `src/hooks/useCaseWork.ts`
+
+**Interfaces:**
+- Consumes: everything in `src/lib/api.ts`; `foldAddenda` and `formatStamp` from `src/lib/userNotes.ts`.
+- Produces (consumed by Task 10):
+
+```ts
+export type CaseWorkState = {
+  loaded: boolean;
+  loadError: string | null;
+  notes: ClinicalNote[];               // the user's notes for this case, createdAt order
+  addenda: Record<string, string>;     // noteId -> folded display block
+  attempt: StoredAttempt | null;
+  createNote(note: ClinicalNote): Promise<ClinicalNote>;  // resolves with the server-id note
+  refileNote(note: ClinicalNote): Promise<void>;
+  deleteNote(id: string): Promise<void>;
+  addAddendum(noteId: string, block: string): Promise<void>;
+  saveAttempt(text: string, signed: boolean): Promise<void>;
+  clearAttempt(): Promise<void>;
+};
+export function useCaseWork(caseId: string): CaseWorkState
+```
+
+No node test: the repo has no React test rig; the workers tests cover the API and Task 12's browser pass covers the wiring.
+
+- [ ] **Step 1: Implement**
+
+```ts
+import { useEffect, useState } from "react";
+import {
+  ApiError,
+  apiAddAddendum,
+  apiCreateNote,
+  apiDeleteAttempt,
+  apiDeleteNote,
+  apiPutAttempt,
+  apiRefileNote,
+  fetchCaseWork,
+  type AddendumRow,
+  type StoredAttempt,
+} from "../lib/api";
+import { foldAddenda, formatStamp } from "../lib/userNotes";
+import type { ClinicalNote } from "../types";
+
+export type CaseWorkState = {
+  loaded: boolean;
+  loadError: string | null;
+  notes: ClinicalNote[];
+  addenda: Record<string, string>;
+  attempt: StoredAttempt | null;
+  createNote(note: ClinicalNote): Promise<ClinicalNote>;
+  refileNote(note: ClinicalNote): Promise<void>;
+  deleteNote(id: string): Promise<void>;
+  addAddendum(noteId: string, block: string): Promise<void>;
+  saveAttempt(text: string, signed: boolean): Promise<void>;
+  clearAttempt(): Promise<void>;
+};
+
+/**
+ * The trainee's server-side work for one case. Fetch-on-mount is sound
+ * because PatientWorkspace remounts per case (key={caseId}); the chart
+ * renders static documents immediately and the user's notes merge in when
+ * this resolves.
+ */
+export function useCaseWork(caseId: string): CaseWorkState {
+  const [notes, setNotes] = useState<ClinicalNote[]>([]);
+  const [addendaRows, setAddendaRows] = useState<AddendumRow[]>([]);
+  const [attempt, setAttempt] = useState<StoredAttempt | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCaseWork(caseId).then(
+      (work) => {
+        if (cancelled) return;
+        setNotes(work.notes);
+        setAddendaRows(work.addenda);
+        setAttempt(work.attempt);
+        setLoaded(true);
+      },
+      (err: unknown) => {
+        if (cancelled) return;
+        // A 401 at mount means the session died: reload so the sign-in gate
+        // shows (nothing is in flight at mount, so nothing can be lost).
+        // Mutation-time 401s deliberately do NOT reload; their catch paths
+        // keep the draft and show an error instead.
+        if (err instanceof ApiError && err.status === 401) window.location.reload();
+        else setLoadError("Couldn't load your notes from the server.");
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+
+  return {
+    loaded,
+    loadError,
+    notes,
+    addenda: foldAddenda(addendaRows),
+    attempt,
+    async createNote(note) {
+      const stored = await apiCreateNote(caseId, note);
+      setNotes((prev) => [...prev, stored]);
+      return stored;
+    },
+    async refileNote(note) {
+      const stored = await apiRefileNote(note);
+      setNotes((prev) => prev.map((n) => (n.id === stored.id ? stored : n)));
+    },
+    async deleteNote(id) {
+      await apiDeleteNote(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    },
+    async addAddendum(noteId, block) {
+      const row = await apiAddAddendum(caseId, noteId, block);
+      setAddendaRows((prev) => [...prev, row]);
+    },
+    async saveAttempt(text, signed) {
+      const next = { text, at: formatStamp(new Date()), signed };
+      await apiPutAttempt(caseId, next);
+      setAttempt(next);
+    },
+    async clearAttempt() {
+      await apiDeleteAttempt(caseId);
+      setAttempt(null);
+    },
+  };
+}
+```
+
+- [ ] **Step 2: Verify** — `npx tsc -b` and `npm run lint` pass.
+- [ ] **Step 3: Commit** — `git commit -m "Phase 3 T9: useCaseWork hook"`
+
+---
+
+### Task 10: UI integration — PatientWorkspace, NotesBrowser, WrapUp dock/module
+
+**Files:**
+- Modify: `src/components/PatientWorkspace.tsx`, `src/components/chart/NotesBrowser.tsx`, `src/components/chart/ChartReview.tsx`, `src/components/wrapup/WrapUpDock.tsx`, `src/components/wrapup/WrapUpModule.tsx`, `src/components/notes/NoteEditorPanel.tsx`, `src/App.css`
+
+**Interfaces:**
+- Consumes: `useCaseWork` (Task 9).
+- Produces: no localStorage reads/writes for notes, addenda, or attempts anywhere under `src/components/`.
+
+- [ ] **Step 1: PatientWorkspace — swap the stores.** Remove the two `usePersistentState` blocks (`storedUserNotes`, `storedAddenda`, currently lines 79-88), the `parseUserNotes`/`parseAddenda` helpers, and the `saveWrapupAttempt`, `addendaKey`, `userNotesKey`, `isOwnNote`, `usePersistentState` imports (keep `usePersistentState` only if something else in the file still uses it; nothing should). Add:
+
+```tsx
+import { useCaseWork } from "../hooks/useCaseWork";
+// inside the component:
+const work = useCaseWork(activeCase.id);
+const [saveError, setSaveError] = useState<string | null>(null);
+const userNotes = work.notes;
+const addenda = work.addenda;
+```
+
+Ownership and deletability predicates (replace the old `ownNote` line 134):
+
+```tsx
+// A note is "yours" if the server filed it under your account for this case,
+// or it is the static persona note this case has you play.
+const isUserNote = (note: Note) => userNotes.some((n) => n.id === note.id);
+const ownNote = (note: Note) =>
+  isUserNote(note) || (!!note.authorId && note.authorId === activeCase.playerHcpId);
+```
+
+The `withAddenda` merge (lines 101-110) is unchanged: `addenda` has the same `Record<noteId, string>` shape as before.
+
+- [ ] **Step 2: PatientWorkspace — async finishDraft and deleteUserNote.** Replace both functions:
+
+```tsx
+async function deleteUserNote(id: string) {
+  try {
+    await work.deleteNote(id);
+    if (selectedDocId === id) onPatch({ selectedDocId: null });
+  } catch {
+    setSaveError("Couldn't delete the note on the server. Try again.");
+  }
+}
+
+// Sign publishes the draft (or appends its addendum); Pend files it as an
+// incomplete note. Edit drafts re-file their target in place; a deleted
+// target degrades to filing as a new note. All paths remove the draft tab.
+// Server-first: the draft tab only closes once the write lands, so a failed
+// save never destroys work.
+async function finishDraft(id: string, status: NoteStatus) {
+  const draft = editors.find((d) => d.id === id);
+  if (!draft) return;
+  const text = htmlToPlainText(draft.body);
+  if (wordCount(text) === 0) return;
+  const remaining = editors.filter((d) => d.id !== id);
+  setSaveError(null);
+  try {
+    if (draft.mode === "addendum" && draft.targetNoteId) {
+      await work.addAddendum(draft.targetNoteId, buildAddendumBlock(user, text, new Date()));
+      onPatch({ editors: remaining });
+      return;
+    }
+    const target =
+      draft.mode === "edit" && draft.targetNoteId
+        ? userNotes.find((n) => n.id === draft.targetNoteId)
+        : undefined;
+    if (target) {
+      await work.refileNote(refileUserNote(target, draft, text, status, new Date()));
+    } else {
+      await work.createNote(buildUserNote(draft, user, text, status, new Date()));
+    }
+    if (status === "signed") {
+      await work.saveAttempt(text, true);
+      onPatch({ editors: remaining, wrapupOpen: true });
+    } else {
+      onPatch({ editors: remaining });
+    }
+  } catch {
+    setSaveError("Couldn't save to the server. Your draft is untouched; try again.");
+  }
+}
+```
+
+- [ ] **Step 3: Thread the new props.**
+  - `NoteEditorPanel` gains `error: string | null`; render `{error && <div className="editor-save-error">{error}</div>}` above its tab strip. PatientWorkspace passes `error={saveError}`. Add to `App.css`:
+
+```css
+.editor-save-error {
+  padding: 6px 10px;
+  background: #fdecea;
+  border-bottom: 1px solid #f5c6c0;
+  color: #b3261e;
+  font-size: 12px;
+}
+```
+  - `ChartReview` and `NotesBrowser` gain `isUserNote: (note: Note) => boolean`; ChartReview forwards it exactly like `ownNote` (props at `ChartReview.tsx:37-53`, forwarding at `:137-143`). In `NotesBrowser`, replace both `activeNote.id.startsWith("user-note-")` checks (lines 277 and 287) with `isUserNote(activeNote)`.
+  - `WrapUpDock` gains and forwards to `WrapUpModule`: `attempt: StoredAttempt | null`, `onSubmitAttempt: (text: string, signed: boolean) => void`, `onClearAttempt: () => void` (import `StoredAttempt` from `../../lib/api`). PatientWorkspace passes:
+
+```tsx
+<WrapUpDock
+  open={wrapupOpen}
+  onToggle={() => onPatch({ wrapupOpen: !wrapupOpen })}
+  onClose={() => onPatch({ wrapupOpen: false })}
+  editors={editors}
+  userNotes={userNotes}
+  user={user}
+  attempt={work.attempt}
+  onSubmitAttempt={(text, signed) => {
+    work.saveAttempt(text, signed).catch(() => setSaveError("Couldn't save the attempt."));
+  }}
+  onClearAttempt={() => {
+    work.clearAttempt().catch(() => setSaveError("Couldn't clear the attempt."));
+  }}
+/>
+```
+
+  - If `work.loadError` is set, render it once as a slim banner at the top of `.module-body` (reuse the `.editor-save-error` class).
+
+- [ ] **Step 4: WrapUpModule — attempt via props.** Remove the `usePersistentState`, `attemptKey`, `parseAttempt`, and `formatStamp` imports and the `storedAttempt` state (lines 41-45). New props: `attempt: StoredAttempt | null; onSubmitAttempt: (text: string, signed: boolean) => void; onClearAttempt: () => void;` (`StoredAttempt` from `../../lib/api`). `submit()` becomes `onSubmitAttempt(selected.text, selected.signed)`; the overreach panel's "Try another note" button and `FeedbackReport`'s `onReset` both call `onClearAttempt()`. Candidates, overreach logic, and the report are unchanged.
+
+- [ ] **Step 5: Verify** — `npx tsc -b` (catches every missed prop), `npm run lint`, `npm test`, `npm run build`. Grep proof the stores are gone from components: `grep -rn "userNotesKey\|addendaKey\|attemptKey\|saveWrapupAttempt" src/components` returns nothing.
+- [ ] **Step 6: Commit** — `git commit -m "Phase 3 T10: workspace reads and writes work via the server"`
+
+---
+
+### Task 11: Retire the dead client plumbing
+
+**Files:**
+- Modify: `src/lib/userNotes.ts`, `src/lib/session.ts`, `src/lib/userNotes.test.ts`
+- Delete: `src/lib/wrapupAttempt.ts`
+
+**Interfaces:**
+- Consumes: Task 10 complete (nothing imports the dead code anymore).
+- Produces: the phase-2 review cleanup items closed.
+
+- [ ] **Step 1: Confirm nothing references the doomed exports** — `grep -rn "generateHcpId\|isOwnNote\|wrapupAttempt\|USER_KEY\|userNotesKey\|addendaKey" src/ --include="*.ts" --include="*.tsx"` shows only the defining files and their tests.
+- [ ] **Step 2: Delete** (Ryan approved these deletions by approving this plan):
+  - `src/lib/wrapupAttempt.ts`, the whole file (attempt persistence is `api.ts` + the hook now; `StoredAttempt` lives in `api.ts`).
+  - From `src/lib/userNotes.ts`: `generateHcpId` (the server generates hcpId since phase 2) and `isOwnNote` (ownership is server-filed membership + `playerHcpId`, inlined in PatientWorkspace at Task 10 Step 1).
+  - From `src/lib/session.ts`: `USER_KEY`, `userNotesKey`, `addendaKey`. Keep `SKIP_DELETE_CONFIRM_KEY` and `signOut` exactly as they are (the `legend*` prefix sweep still clears sticky keys; server work now survives sign-out by construction).
+  - From `src/lib/userNotes.test.ts`: the `isOwnNote` and `generateHcpId` test blocks.
+- [ ] **Step 3: Verify** — `npm test`, `npm run test:workers`, `npx tsc -b`, `npm run lint`, `npm run build`. All green.
+- [ ] **Step 4: Commit** — `git commit -m "Phase 3 T11: retire localStorage work stores and hcpId ownership backstops"`
+
+---
+
+### Task 12: Browser verification + docs
+
+**Files:**
+- Modify: `CLAUDE.md`, `STATUS.md`
+
+- [ ] **Step 1: Browser click-through** (`npm run dev`, http://localhost:5173):
+  1. Guest sign-in → open a case → New Note → type → **Pend** → note appears Incomplete.
+  2. Reload (F5) → the pended note is still there (server-side now; localStorage before).
+  3. Reopen → edit → **Sign** → Performance dock opens with the rubric report.
+  4. Reload → the report is still there; "Try another note" clears it, and it stays cleared after another reload.
+  5. Addendum on the signed note → shows under the note; survives reload.
+  6. Delete the note (confirm dialog) → gone; survives reload.
+  7. Sign out → sign in as a NEW guest → the first guest's work is NOT visible.
+  8. DevTools > Application > localStorage: no `legend-user-notes-*`, `legend-addenda-*`, or `legend-wrapup-*` keys ever appear.
+- [ ] **Step 2: Update `CLAUDE.md`** Gotchas: rewrite the "Trainee session + note feedback" bullet (notes/attempts/addenda are server-side via `/api` + `useCaseWork`; localStorage holds only sticky + the delete-confirm preference), and the Architecture bullets for `src/worker/` (work.ts, rekey.ts, purge.ts, cron trigger) and `src/lib/` (api.ts added, wrapupAttempt.ts gone, isOwnNote/generateHcpId gone).
+- [ ] **Step 3: Update `STATUS.md`** (Done entry for the phase-3 build; "Next concrete step" becomes the Task 13 ship gate; note the remote migration is pending).
+- [ ] **Step 4: Run `graphify update .`**
+- [ ] **Step 5: Commit** — `git commit -m "Phase 3 T12: browser-verified; docs reconciled"`
+
+---
+
+### Task 13: SHIP (Ryan-gated — do not start without his explicit go)
+
+- [ ] **Step 1: Remote migration** — `npx wrangler d1 migrations apply legend-db --remote` (PROD; Ryan runs it or explicitly approves).
+- [ ] **Step 2: Deploy** — `npm run deploy` (NEVER bare `wrangler deploy`).
+- [ ] **Step 3: Live checks** — `/api/health` returns `{"ok":true,"db":true}`; live guest sign-in → Sign a note → reload → persists; the cron shows under the worker's Settings > Triggers in the Cloudflare dashboard.
+- [ ] **Step 4: Google link check** — Ryan signs in as a guest, writes a note, links Google, confirms the note followed the account.
+- [ ] **Step 5: Update STATUS.md; commit** — `git commit -m "Phase 3 shipped: server-side work persistence live"`

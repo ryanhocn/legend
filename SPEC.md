@@ -61,6 +61,7 @@ Middleware resolves the better-auth session once per request
 - `DELETE /api/notes/:id` — delete an own user note
 - `POST /api/notes/:id/addenda` — append an addendum
 - `PUT  /api/cases/:caseId/attempt` — upsert the wrap-up attempt
+- `DELETE /api/cases/:caseId/attempt` — clear it ("Try another note" persists the reset)
 
 Server generates note ids (`crypto.randomUUID()`), retiring the `user-note-`
 prefix as an identity mechanism. Validation is minimal hand-rolled shape checks
