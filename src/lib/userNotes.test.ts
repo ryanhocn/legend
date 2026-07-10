@@ -6,8 +6,6 @@ import {
   buildUserNote,
   foldAddenda,
   formatStamp,
-  generateHcpId,
-  isOwnNote,
   refileUserNote,
 } from "./userNotes";
 
@@ -90,33 +88,6 @@ const baseNote: ClinicalNote = {
   status: "cosign",
   body: "PROGRESS NOTE BODY",
 };
-
-describe("generateHcpId", () => {
-  test("is a d9-prefixed six-digit doctor id", () => {
-    for (let i = 0; i < 20; i++) {
-      expect(generateHcpId()).toMatch(/^d9\d{5}$/);
-    }
-  });
-});
-
-describe("isOwnNote", () => {
-  test("matches the login's doctor id", () => {
-    expect(isOwnNote({ ...baseNote, authorId: "d912345" }, "d912345")).toBe(true);
-  });
-
-  test("matches the case's player persona id", () => {
-    expect(isOwnNote({ ...baseNote, authorId: "d284617" }, "d912345", "d284617")).toBe(true);
-  });
-
-  test("rejects other authors and notes without an authorId", () => {
-    expect(isOwnNote({ ...baseNote, authorId: "d000001" }, "d912345", "d284617")).toBe(false);
-    expect(isOwnNote(baseNote, "d912345", "d284617")).toBe(false);
-  });
-
-  test("user-note- prefix is a backstop for pre-ID stored notes", () => {
-    expect(isOwnNote({ ...baseNote, id: "user-note-1-draft-1" }, "d912345")).toBe(true);
-  });
-});
 
 describe("buildAddendumBlock / appendAddendum", () => {
   const now = new Date(2026, 6, 7, 9, 5); // 07/07/2026 09:05

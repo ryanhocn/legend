@@ -55,26 +55,6 @@ export function buildUserNote(
   };
 }
 
-/** Random runtime doctor ID; the d9 range is reserved for generated logins. */
-export function generateHcpId(): string {
-  return `d9${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`;
-}
-
-/**
- * A note is yours if its authorId matches your login or the persona this case
- * assigns you. The user-note- prefix is a backstop for notes stored before
- * doctor IDs existed.
- */
-export function isOwnNote(
-  note: ClinicalNote,
-  userHcpId: string,
-  playerHcpId?: string,
-): boolean {
-  if (note.id.startsWith("user-note-")) return true;
-  if (!note.authorId) return false;
-  return note.authorId === userHcpId || note.authorId === playerHcpId;
-}
-
 /** Stamped addendum block, matching the static attestation style in case data. */
 export function buildAddendumBlock(user: UserProfile, text: string, now: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
