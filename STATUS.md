@@ -4,17 +4,38 @@
 
 Last updated: 2026-07-10
 Branch / worktree: main
-Latest session: Phase 2 real accounts SHIPPED (7ee4b06..HEAD: better-auth at
-/api/auth, anonymous guests + Google, persona on the user table, D1 migrations
-local+remote, session-gated SPA; secrets in prod; live /api/auth/ok +
-anonymous sign-in verified). Same day, earlier: Phase 1 foundation shipped
-(d1f43d8..d7659a5). Prior sessions: hierarchy system + case fleet
-(68e1f64..8574cee), multi-case foundation (8d694ea registry, dec89c0 patient
-switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
-(3b04aeb..70c80ca), tab restructure (47ee20b..54a1ea1), note feedback
-(cce42a4..dc9f29b).
+Latest session: Phase 3 server-side notes/attempts BUILT and browser-verified
+(990d551..93ab9ea: trainee notes, addenda, and wrap-up attempts moved from
+localStorage to D1 via a session-gated Hono router; see Done entry below).
+Same day, earlier: Phase 2 real accounts SHIPPED (7ee4b06..5d8b502: better-auth
+at /api/auth, anonymous guests + Google, persona on the user table, D1
+migrations local+remote, session-gated SPA; secrets in prod; live
+/api/auth/ok + anonymous sign-in verified). Same day, earlier still: Phase 1
+foundation shipped (d1f43d8..d7659a5). Prior sessions: hierarchy system +
+case fleet (68e1f64..8574cee), multi-case foundation (8d694ea registry,
+dec89c0 patient switching, CASE_AUTHORING.md), Cloudflare deploy + README +
+mobile gate (3b04aeb..70c80ca), tab restructure (47ee20b..54a1ea1), note
+feedback (cce42a4..dc9f29b).
 
 ## Done
+- Phase 3 server-side notes/attempts (2026-07-10, 990d551..93ab9ea, subagent-driven off
+  SPEC+PLAN, all 11 tasks review-clean, browser-verified 8/8): trainee notes,
+  addenda, and wrap-up attempts moved from localStorage to D1, scoped to the
+  better-auth `user.id`. `src/worker/work.ts` is the session-gated Hono router
+  (GET /api/cases/:caseId/work, POST notes, PUT/DELETE /api/notes/:id, POST
+  addenda, PUT/DELETE attempt); client side is `src/lib/api.ts` (fetch wrapper)
+  + `src/hooks/useCaseWork.ts` (the hook `PatientWorkspace` reads/writes
+  through). Guest-to-Google re-key on account link (`src/worker/rekey.ts` via
+  better-auth's `onLinkAccount`, runs before the anon user is deleted) and a
+  daily anon-user purge (`src/worker/purge.ts`, cron `17 3 * * *` in
+  `wrangler.jsonc`; worker default export is now `{ fetch, scheduled }`).
+  Deleted the dead client plumbing: `src/lib/wrapupAttempt.ts`, `isOwnNote`,
+  `generateHcpId` (client copy), and the three localStorage work keys
+  (`legend-user-notes-*`, `legend-addenda-*`, `legend-wrapup-*`). Browser
+  click-through 8/8 PASS (pend/reload/reopen/sign/reload/clear-report/reload/
+  addendum/reload/delete/reload/sign-out-new-guest-isolation/localStorage
+  audit), no console or network errors. Migration 0002 (the new tables) is
+  applied locally only; remote D1 is still on 0001 pending the T13 ship gate.
 - Restored the lost Chart Review + Results work from Claude Code file-history after
   an accidental hard reset, committed (71d79a9). Recovery recipe in project memory
   ([[claude-file-history-recovery]]).
@@ -98,64 +119,52 @@ switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
   never push without Ryan's approval).
 
 ## Next concrete step
-Pivot from content to backend: user accounts -> server persistence -> Patient
-Message + LLM attending feedback. Researched 2026-07-09 (Cloudflare-native, primary
-sources); recommended stack:
-- Worker `main` script + Hono router on the existing static-assets deploy:
-  `wrangler.jsonc` gains `"main"` + `assets.run_worker_first: ["/api/*"]`
-  (documented SPA-with-API recipe; `not_found_handling` unchanged).
-- better-auth >= 1.5 (native D1 support: `database: env.DB`, no ORM adapter) +
-  Google social login + the anonymous plugin (guest sessions keep first-use
-  friction at zero; `onLinkAccount` migrates guest work into the real account).
-  No email/password: bcrypt/argon2 unusable in workerd, PBKDF2 capped at 100k
-  iterations; delegating password proof to Google is the accepted Workers
-  pattern. Official docs cover the whole stack (better-auth installation page
-  has the Workers `nodejs_compat` flag; 1.5 blog documents the D1 binding;
-  Hono has an official "Better Auth on Cloudflare" example). Known bug: skip
-  `cookieCache` + KV secondary storage (logout bug, open as of Feb 2026).
-- D1 for everything (users, sessions, notes, attempts, messages). Durable Objects
-  only if Patient Message ever goes real-time/WebSocket.
-- Stay on the Workers FREE tier (Ryan 2026-07-09; working model first). This is
-  fine because Google-only auth means no CPU-heavy hashing, and an LLM proxy is
-  I/O-bound (awaiting Anthropic doesn't consume the 10ms CPU budget). D1 free
-  tier (500MB/db, ~5M row reads + 100k row writes per day) dwarfs the workload.
-  Revisit Paid only if email/password auth or heavy compute ever lands.
-- Patient Message scope (Ryan 2026-07-09): one chat channel per patient. All
-  HCPs involved in that patient (note authors, nurse, doctors, pharmacist,
-  microbiologist) are LLM-played personas grounded in the case bundle; the
-  trainee asks quick MDT questions on the channel (e.g. "spiking 39, switch to
-  oral vanc?") and gets in-character, case-accurate replies/pushback (e.g.
-  micro: wound culture is gram-negative only, blood cultures clear — continue
-  metro + cipro IV). Async request/response, D1 rows, no real-time transport.
-- Phases: (0) persist unsigned drafts — DISPUTED, see below; (1) Worker+Hono
-  foundation — SHIPPED 2026-07-10; (2) better-auth accounts — **BUILT
-  2026-07-10, T1-T7 + fixes complete (7ee4b06..HEAD), final review READY TO
-  SHIP; T8 (prod secrets + remote migrations + deploy) awaiting Ryan's go**;
-  (3) notes/attempts persistence API + import ~1.5-2d — NEXT: spec+plan; (4)
-  Patient Message + LLM proxy. Both phase-1 carry-overs landed in phase 2
-  (worker eslint globals; real-D1 vitest-pool-workers project, 2 tests).
-- Phase 2 T8 SHIPPED 2026-07-10: 3 secrets in prod (`wrangler secret put`),
-  remote migrations applied (auth tables live in prod legend-db), deployed
-  (version 86c78d99). Live checks: /api/auth/ok, /api/health, SPA + deep
-  links, anonymous sign-in 200 (note: better-auth POSTs need a JSON body and
-  an Origin header — a bare curl 400s by design). Ryan clicked through the
-  live Google flow and confirmed the avatar renders (2026-07-10): phase 2 fully
-  closed. A couple of curl-test anonymous rows exist in prod
-  (harmless; the anon-GC item below covers cleanup).
-- **Phase-3 entry warnings (from the phase-2 final review — read before
-  starting phase 3):**
-  - Key server-side note ownership on better-auth `user.id`, NOT `hcpId`:
-    hcpId has no UNIQUE constraint and only a 100k value space (birthday
-    collisions in the low hundreds of users), and `isOwnNote`'s `user-note-`
-    prefix backstop must be retired once notes are server-side.
-  - Anonymous users are never garbage-collected: every guest mints a user+
-    session row forever. Needs a purge story (anon users with no linked
-    account past N days) before real traffic.
-  - `baseURL` derives from the request origin — fine for single-origin
-    workers.dev; switch to explicit `baseURL`/`trustedOrigins` the moment a
-    custom domain is added.
-  - `src/lib/userNotes.ts` generateHcpId is now dead in prod code (server
-    generates hcpId); remove with the phase-3 refactor.
+Ship phase 3 (Task 13, Ryan-gated — none of this runs without his explicit go):
+- Remote D1 migration: `npx wrangler d1 migrations apply legend-db --remote`.
+  Applies `migrations/0002_user_work.sql` (user_note, note_addendum,
+  wrapup_attempt tables); prod `legend-db` is still on 0001 only, so the work
+  router has no tables to write to in prod until this runs.
+- `npm run deploy` (build + wrangler deploy). A bare `wrangler deploy` ships
+  the worker with no assets and takes the live SPA down — never run it alone.
+- Live checks after deploy: `/api/health` `{ok:true,db:true}`, `/api/auth/ok`,
+  SPA root + a deep link both 200.
+- Google-link check: as a guest, pend/sign a note, then link a Google account
+  and confirm the note/attempt re-key onto the Google user (`rekeyUserWork`,
+  `src/worker/rekey.ts`) and the old anonymous row is gone.
+- After T13 ships, phase 3 is fully closed. Next on the roadmap: phase 4,
+  Patient Message (per-patient MDT chat, LLM personas) — not specced yet; see
+  `DYNAMIC_PATIENTS.md` for the dynamic-patients research that feeds it.
+
+Historical context (phases 1-3, all now shipped/built, kept for the record):
+- Phase 1 (Worker+Hono foundation): SHIPPED 2026-07-10 (d1f43d8..d7659a5).
+- Phase 2 (better-auth accounts): SHIPPED 2026-07-10 (7ee4b06..HEAD at the
+  time) — 3 secrets in prod (`wrangler secret put`), remote migrations
+  applied (auth tables live in prod legend-db), deployed (version 86c78d99).
+  Ryan clicked through the live Google flow and confirmed the avatar renders:
+  phase 2 fully closed. A couple of curl-test anonymous rows exist in prod
+  (harmless; the anon-GC item below covers cleanup, and phase 3's purge.ts
+  now handles it going forward).
+- Phase 3 (server-side notes/attempts): BUILT and browser-verified 2026-07-10,
+  see the Done entry above. Its entry warnings from the phase-2 final review
+  are now resolved: ownership keys on better-auth `user.id` (`work.ts`
+  middleware), anonymous users get a daily purge (`purge.ts` + cron), and
+  `generateHcpId`'s client copy is deleted (the worker keeps its own, kept
+  deliberately separate from SPA code per the `tsconfig.worker.json` split).
+  `baseURL` still derives from the request origin — revisit if a custom
+  domain is ever added.
+- No email/password auth: bcrypt/argon2 unusable in workerd, PBKDF2 capped at
+  100k iterations; Google-only auth is the accepted Workers pattern. Staying
+  on the Workers FREE tier (Ryan 2026-07-09) remains fine post phase 3: no
+  CPU-heavy hashing, D1 free tier headroom is enormous relative to the
+  workload. Revisit Paid only if heavy compute ever lands.
+- Patient Message scope (Ryan 2026-07-09, unchanged, still the phase-4 plan):
+  one chat channel per patient. All HCPs involved in that patient (note
+  authors, nurse, doctors, pharmacist, microbiologist) are LLM-played
+  personas grounded in the case bundle; the trainee asks quick MDT questions
+  on the channel (e.g. "spiking 39, switch to oral vanc?") and gets
+  in-character, case-accurate replies/pushback (e.g. micro: wound culture is
+  gram-negative only, blood cultures clear — continue metro + cipro IV).
+  Async request/response, D1 rows, no real-time transport.
 - Phase 0 dispute (2026-07-09): Ryan believes unsigned drafts already survive
   reload; the code says otherwise — drafts live in `caseUi.editors`, plain
   `useState` at App.tsx:49 (and `openCaseIds` App.tsx:46), wiped on reload.
@@ -176,12 +185,12 @@ sources); recommended stack:
   with a resume note in the backlog.
 
 ## Notes for next session
-- NEXT CONCRETE STEP: phase 3 (server-side notes/attempts persistence + one-shot
-  localStorage import). Start with spec+plan (brainstorm the flows with Ryan),
-  and FIRST read the "Phase-3 entry warnings" bullet above — especially: own
-  server-side notes by better-auth `user.id`, not `hcpId`.
-- Verify target: `npm test` (182 tests, 23 files, node pool), `npm run
-  test:workers` (2 tests, real local D1), `npx tsc -b`, `npm run lint`
+- NEXT CONCRETE STEP: Task 13 ship gate for phase 3 (remote D1 migration +
+  `npm run deploy` + live checks + Google-link check, all Ryan-gated) — see
+  "Next concrete step" above. Phase 3's spec/plan/build/browser-verify are
+  all done; only the deploy is outstanding.
+- Verify target: `npm test` (186 tests, 24 files, node pool), `npm run
+  test:workers` (17 tests, real local D1), `npx tsc -b`, `npm run lint`
   (clean — the old StickyNotePopup.tsx error was fixed in the F1 fix wave;
   generated `worker-configuration.d.ts` is eslint-ignored), `npm run build`
   (emits `dist/client` + `dist/legend` since the Cloudflare vite plugin).
