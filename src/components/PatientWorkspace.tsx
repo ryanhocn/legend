@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Group as PanelGroup,
@@ -17,19 +17,19 @@ import { ResultsModule } from "./results/ResultsModule";
 import { StickyNotePopup } from "./StickyNotePopup";
 import { SummaryModule } from "./summary/SummaryModule";
 import { WrapUpDock } from "./wrapup/WrapUpDock";
-import { useCase } from "../context/CaseContext";
+import { CaseContext, useCase } from "../context/CaseContext";
 import { mainTabs } from "../data/tabs";
 import { useCaseWork } from "../hooks/useCaseWork";
 import { htmlToPlainText, wordCount } from "../lib/noteText";
 import {
-  appendAddendum,
   buildAddendumBlock,
   buildUserNote,
   refileUserNote,
 } from "../lib/userNotes";
+import { applyEvents, workToEvents } from "../lib/applyEvents";
 import { caseNow } from "../lib/simTime";
 import { plainTextToEditorHtml } from "../lib/smarttext";
-import type { CaseUiState, ClinicalNote, Note, NoteStatus, UserProfile } from "../types";
+import type { CaseUiState, Note, NoteStatus, UserProfile } from "../types";
 
 // Draft ids only need uniqueness within a session; module scope survives the
 // per-case remounts (the workspace is keyed by caseId).
@@ -71,18 +71,14 @@ export function PatientWorkspace({
     else panel.collapse();
   }
 
-  // User-authored notes join the case content in every view; runtime addenda
-  // overlay onto any note (static or user) by id, after any static addendum.
-  const withAddenda = <T extends ClinicalNote>(note: T): T =>
-    addenda[note.id]
-      ? { ...note, addendum: appendAddendum(note.addendum, addenda[note.id]) }
-      : note;
-  const mergedUserNotes = userNotes.map(withAddenda);
-  const allDocuments = [
-    ...activeCase.documents.map((doc) => (doc.kind === "note" ? withAddenda(doc) : doc)),
-    ...mergedUserNotes,
-  ];
-  const allNotes = [...activeCase.notes.map(withAddenda), ...mergedUserNotes];
+  // The trainee's server work (notes + folded addenda) joins the static case
+  // content through the single applyEvents fold. documents/notes come from the
+  // folded bundle, which is also re-provided via context below so every
+  // useCase() consumer sees the same evolved chart.
+  const events = useMemo(() => workToEvents(userNotes, addenda), [userNotes, addenda]);
+  const liveCase = useMemo(() => applyEvents(activeCase, events), [activeCase, events]);
+  const allDocuments = liveCase.documents;
+  const allNotes = liveCase.notes;
 
   const selectedDocument = selectedDocId
     ? allDocuments.find((doc) => doc.id === selectedDocId) ?? null
@@ -266,7 +262,7 @@ export function PatientWorkspace({
     );
 
   return (
-    <>
+    <CaseContext.Provider value={liveCase}>
       <div className="ehr-workspace">
         <div className="fixed-sidebar">
           <PatientSidebar />
@@ -389,6 +385,6 @@ export function PatientWorkspace({
           work.clearAttempt().catch(() => setSaveError("Couldn't clear the attempt."));
         }}
       />
-    </>
+    </CaseContext.Provider>
   );
 }
