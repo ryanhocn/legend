@@ -419,6 +419,16 @@ export type CaseBundle = {
   bloods: BloodRow[];
 };
 
+/**
+ * A single overlay event folded onto a CaseBundle by applyEvents. These kinds
+ * cover the trainee's own work (notes + addenda); the engine plan adds
+ * sim-reveal kinds (result / encounter / vitals). The fold patches `documents`
+ * and recomputes `notes` from it.
+ */
+export type CaseEvent =
+  | { kind: "note.create"; note: ClinicalNote }
+  | { kind: "note.addendum"; noteId: string; block: string };
+
 export type RubricItemResult = {
   item: RubricItem;
   matched: boolean;
