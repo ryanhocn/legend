@@ -37,6 +37,7 @@ function App() {
           surname: session.user.surname,
           grade: session.user.grade as Grade,
           hcpId: session.user.hcpId,
+          image: session.user.image ?? undefined,
         }
       : null;
 

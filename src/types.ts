@@ -218,6 +218,8 @@ export type UserProfile = {
    * authored case staff use d0#####-d8##### so they can never collide. */
   hcpId: string;
   grade: Grade;
+  /** Google account profile picture URL; absent for guests/manual accounts. */
+  image?: string;
 };
 
 /** An open note in the right-rail NoteWriter; multiple can be edited at once. */

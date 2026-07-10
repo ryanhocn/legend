@@ -64,8 +64,19 @@ export function TopSystemBar({
             }
           }}
         >
-          {(user.forename[0] ?? "").toUpperCase()}
-          {(user.surname[0] ?? "").toUpperCase()}
+          {user.image ? (
+            <img
+              className="user-bubble-avatar"
+              src={user.image}
+              alt=""
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <>
+              {(user.forename[0] ?? "").toUpperCase()}
+              {(user.surname[0] ?? "").toUpperCase()}
+            </>
+          )}
         </button>
       </div>
     </header>
