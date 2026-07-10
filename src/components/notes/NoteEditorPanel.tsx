@@ -16,6 +16,7 @@ export function NoteEditorPanel({
   onSign,
   onPend,
   error,
+  busy,
 }: {
   editors: NoteDraft[];
   activeId: string | null;
@@ -26,6 +27,7 @@ export function NoteEditorPanel({
   onSign: (id: string) => void;
   onPend: (id: string) => void;
   error: string | null;
+  busy: boolean;
 }) {
   const active = editors.find((draft) => draft.id === activeId) ?? null;
 
@@ -68,6 +70,7 @@ export function NoteEditorPanel({
           onChange={(body) => onChangeBody(active.id, body)}
           onSign={() => onSign(active.id)}
           onPend={() => onPend(active.id)}
+          busy={busy}
         />
       )}
     </div>

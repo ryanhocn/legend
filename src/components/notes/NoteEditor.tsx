@@ -59,6 +59,7 @@ export function NoteEditor({
   onChange,
   onSign,
   onPend,
+  busy,
 }: {
   noteType: string;
   service: string;
@@ -68,6 +69,7 @@ export function NoteEditor({
   onChange: (value: string) => void;
   onSign: () => void;
   onPend: () => void;
+  busy: boolean;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   // The live selection inside the editor, saved on every interaction so the font
@@ -390,7 +392,7 @@ export function NoteEditor({
         {/* Pend files the draft as an incomplete note; Sign publishes it and
             opens Wrap-Up feedback. Both disabled while the note is empty. */}
         {mode !== "addendum" && (
-          <button onClick={onPend} disabled={words === 0}>
+          <button onClick={onPend} disabled={words === 0 || busy}>
             Pend
           </button>
         )}
@@ -401,7 +403,7 @@ export function NoteEditor({
         <button
           className="green-button"
           onClick={onSign}
-          disabled={words === 0 || wildcards > 0}
+          disabled={words === 0 || wildcards > 0 || busy}
           title={wildcards > 0 ? "Complete all *** fields before signing" : undefined}
         >
           <CheckCircle2 size={13} />

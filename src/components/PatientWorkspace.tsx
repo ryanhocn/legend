@@ -49,7 +49,7 @@ export function PatientWorkspace({
 }: {
   user: UserProfile;
   ui: CaseUiState;
-  onPatch: (patch: Partial<CaseUiState>) => void;
+  onPatch: (patch: Partial<CaseUiState> | ((prev: CaseUiState) => Partial<CaseUiState>)) => void;
   stickyOpen: boolean;
   onCloseSticky: () => void;
 }) {
@@ -57,6 +57,7 @@ export function PatientWorkspace({
   const { mainTab, chartTab, selectedDocId, editors, activeEditorId, wrapupOpen } = ui;
   const work = useCaseWork(activeCase.id);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const userNotes = work.notes;
   const addenda = work.addenda;
   const rightRef = useRef<PanelImperativeHandle>(null);
@@ -160,9 +161,10 @@ export function PatientWorkspace({
   }
 
   async function deleteUserNote(id: string) {
+    setSaveError(null);
     try {
       await work.deleteNote(id);
-      if (selectedDocId === id) onPatch({ selectedDocId: null });
+      onPatch((prev) => (prev.selectedDocId === id ? { selectedDocId: null } : {}));
     } catch {
       setSaveError("Couldn't delete the note on the server. Try again.");
     }
@@ -172,18 +174,22 @@ export function PatientWorkspace({
   // incomplete note. Edit drafts re-file their target in place; a deleted
   // target degrades to filing as a new note. All paths remove the draft tab.
   // Server-first: the draft tab only closes once the write lands, so a failed
-  // save never destroys work.
+  // save never destroys work. onPatch uses the functional form for every
+  // post-await update so it can't clobber editor changes made during the
+  // round-trip (it resolves against React's current state, not this render's
+  // stale `editors` snapshot).
   async function finishDraft(id: string, status: NoteStatus) {
+    if (saving) return;
     const draft = editors.find((d) => d.id === id);
     if (!draft) return;
     const text = htmlToPlainText(draft.body);
     if (wordCount(text) === 0) return;
-    const remaining = editors.filter((d) => d.id !== id);
     setSaveError(null);
+    setSaving(true);
     try {
       if (draft.mode === "addendum" && draft.targetNoteId) {
         await work.addAddendum(draft.targetNoteId, buildAddendumBlock(user, text, new Date()));
-        onPatch({ editors: remaining });
+        onPatch((prev) => ({ editors: prev.editors.filter((d) => d.id !== id) }));
         return;
       }
       const target =
@@ -197,12 +203,17 @@ export function PatientWorkspace({
       }
       if (status === "signed") {
         await work.saveAttempt(text, true);
-        onPatch({ editors: remaining, wrapupOpen: true });
+        onPatch((prev) => ({
+          editors: prev.editors.filter((d) => d.id !== id),
+          wrapupOpen: true,
+        }));
       } else {
-        onPatch({ editors: remaining });
+        onPatch((prev) => ({ editors: prev.editors.filter((d) => d.id !== id) }));
       }
     } catch {
       setSaveError("Couldn't save to the server. Your draft is untouched; try again.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -234,6 +245,7 @@ export function PatientWorkspace({
         onSign={(id) => finishDraft(id, "signed")}
         onPend={(id) => finishDraft(id, "incomplete")}
         error={saveError}
+        busy={saving}
       />
     ) : (
       <DocumentPanel
@@ -255,8 +267,8 @@ export function PatientWorkspace({
               <MainTabBar selected={mainTab} onSelect={(tab) => onPatch({ mainTab: tab })} />
 
               <div className="module-body">
-                {work.loadError && (
-                  <div className="editor-save-error">{work.loadError}</div>
+                {(work.loadError ?? saveError) && (
+                  <div className="editor-save-error">{work.loadError ?? saveError}</div>
                 )}
 
                 {mainTab === "summary" && <SummaryModule />}
@@ -358,9 +370,11 @@ export function PatientWorkspace({
         user={user}
         attempt={work.attempt}
         onSubmitAttempt={(text, signed) => {
+          setSaveError(null);
           work.saveAttempt(text, signed).catch(() => setSaveError("Couldn't save the attempt."));
         }}
         onClearAttempt={() => {
+          setSaveError(null);
           work.clearAttempt().catch(() => setSaveError("Couldn't clear the attempt."));
         }}
       />

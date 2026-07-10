@@ -73,12 +73,18 @@ function App() {
     }
   }
 
-  function patchActiveUi(patch: Partial<CaseUiState>) {
+  function patchActiveUi(
+    patch: Partial<CaseUiState> | ((prev: CaseUiState) => Partial<CaseUiState>),
+  ) {
     if (!activeCaseId) return;
-    setCaseUi((prev) => ({
-      ...prev,
-      [activeCaseId]: { ...(prev[activeCaseId] ?? DEFAULT_UI), ...patch },
-    }));
+    setCaseUi((prev) => {
+      const current = prev[activeCaseId] ?? DEFAULT_UI;
+      const resolved = typeof patch === "function" ? patch(current) : patch;
+      return {
+        ...prev,
+        [activeCaseId]: { ...current, ...resolved },
+      };
+    });
   }
 
   if (isPending) return null; // brief blank while the session loads
