@@ -95,7 +95,11 @@ export function SignInPage({
             <button
               className="signin-submit signin-google"
               type="button"
-              onClick={onGoogle}
+              disabled={saving}
+              onClick={() => {
+                setSaving(true);
+                onGoogle();
+              }}
             >
               <LogIn size={14} />
               Sign in with Google
