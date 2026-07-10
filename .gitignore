@@ -31,3 +31,4 @@ references
 
 # Claude Code local config (CLAUDE.md at repo root stays tracked)
 .claude/
+graphify-out/

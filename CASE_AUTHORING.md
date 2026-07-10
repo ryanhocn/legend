@@ -153,7 +153,7 @@ Run all of these; every one must pass before the case is done.
 ```bash
 npx tsc -b        # shapes match; no missing fields
 npm test          # includes your rubric.test.ts
-npm run lint      # one pre-existing StickyNotePopup error is known; add none
+npm run lint      # clean baseline; add nothing
 npm run dev
 ```
 

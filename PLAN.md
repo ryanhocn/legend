@@ -1,5 +1,11 @@
 # PLAN: Phase 2 — Real user accounts (better-auth + Google + anonymous guests)
 
+> **EXECUTED AND SHIPPED 2026-07-10.** This plan is now a historical record (all
+> tasks T1-T8 done, incl. fix waves; ledger in .superpowers/sdd/progress.md).
+> The "port 5199" instructions below were an implementation-time workaround for a
+> then-occupied port 5173 and are obsolete: dev is pinned to 5173 strictPort.
+> Phase 3 gets a fresh PLAN.md.
+
 > Implementation plan for SPEC.md (phase 2, approved 2026-07-10). Written for a fresh implementer with no prior context. Planner is not the implementer. Phase 1 plan is historical (git: PLAN.md @ fc27d81).
 
 ## Approach

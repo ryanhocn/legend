@@ -83,11 +83,12 @@ switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
 ## In flight
 - `src/data/patients/hyponatraemia001/` is a deliberately uncommitted partial case
   (bloods.ts + patient.json only, NOT in the registry, so the build is unaffected).
-  Ryan's call (2026-07-09): leave it on disk; CASE_BACKLOG.md now carries an
-  IN PROGRESS note telling the next case-generation run to resume it.
-- .gitignore + CLAUDE.md carry uncommitted modifications not made in this session;
-  .graphifyignore untracked. Left alone per Ryan (commit scope was CASE_BACKLOG.md
-  + session doc updates only).
+  Ryan's call (2026-07-09): leave it on disk; CASE_BACKLOG.md carries an
+  IN PROGRESS note telling the next case-generation run to resume it. This is the
+  ONLY intentionally uncommitted work.
+- Session 2026-07-09/10 commit range: `8574cee..HEAD` (backend pivot: research,
+  phase 1, phase 2, handoff doc reconciliation). Nothing pushed (standing rule:
+  never push without Ryan's approval).
 
 ## Next concrete step
 Pivot from content to backend: user accounts -> server persistence -> Patient
@@ -130,8 +131,9 @@ sources); recommended stack:
   remote migrations applied (auth tables live in prod legend-db), deployed
   (version 86c78d99). Live checks: /api/auth/ok, /api/health, SPA + deep
   links, anonymous sign-in 200 (note: better-auth POSTs need a JSON body and
-  an Origin header — a bare curl 400s by design). Ryan to click through the
-  live Google flow once; a couple of curl-test anonymous rows exist in prod
+  an Origin header — a bare curl 400s by design). Ryan clicked through the
+  live Google flow and confirmed the avatar renders (2026-07-10): phase 2 fully
+  closed. A couple of curl-test anonymous rows exist in prod
   (harmless; the anon-GC item below covers cleanup).
 - **Phase-3 entry warnings (from the phase-2 final review — read before
   starting phase 3):**
@@ -167,10 +169,18 @@ sources); recommended stack:
   with a resume note in the backlog.
 
 ## Notes for next session
-- Verify target: `npm test` (182 tests, 23 files), `npx tsc -b`, `npm run lint`
+- NEXT CONCRETE STEP: phase 3 (server-side notes/attempts persistence + one-shot
+  localStorage import). Start with spec+plan (brainstorm the flows with Ryan),
+  and FIRST read the "Phase-3 entry warnings" bullet above — especially: own
+  server-side notes by better-auth `user.id`, not `hcpId`.
+- Verify target: `npm test` (182 tests, 23 files, node pool), `npm run
+  test:workers` (2 tests, real local D1), `npx tsc -b`, `npm run lint`
   (clean — the old StickyNotePopup.tsx error was fixed in the F1 fix wave;
   generated `worker-configuration.d.ts` is eslint-ignored), `npm run build`
   (emits `dist/client` + `dist/legend` since the Cloudflare vite plugin).
+- Deploy is `npm run deploy` ONLY; remote D1 migrations
+  (`npx wrangler d1 migrations apply legend-db --remote`) always gated on Ryan.
+- SDD execution ledger for this whole pivot: `.superpowers/sdd/progress.md`.
 - Unsigned note drafts are in-memory only (App.tsx useState); sign or pend before a
   reload or they're lost. Signed/pended user notes persist in localStorage.
 - The editor body is contentEditable HTML; scoring/reflow go through the pure libs

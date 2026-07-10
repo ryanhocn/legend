@@ -14,11 +14,11 @@ It recreates the parts of an electronic health record you actually have to navig
 
 **https://legend.ryanhocn.workers.dev**
 
-No account, no backend. Everything you write stays in your own browser (localStorage), so there is nothing to register and nothing to leak. Signing out clears it.
+No registration needed: "Start training" gives you a guest session instantly, or sign in with Google to keep your identity across devices. Notes and feedback still live in your own browser (localStorage) for now; server-side saving is the next milestone. Signing out clears your local work.
 
 ## How to use it, step by step
 
-1. **Sign in.** Enter any first and last name, then pick your **Hierarchy** (FY1-2, ST3+, or Consultant, with US equivalents shown). Your grade matters: each case is pitched at a level, and signing a note on a case above your grade is flagged as overreach.
+1. **Sign in.** Enter any first and last name and pick your **Hierarchy** (FY1-2, ST3+, or Consultant, with US equivalents shown) to start as a guest, or use **Sign in with Google** (you set your doctor persona once; returning visits skip the form). Your grade matters: each case is pitched at a level, and signing a note on a case above your grade is flagged as overreach.
 2. **Pick a patient.** You land on **Patient Lists**. "All Patients" (the default) shows every case; the specialty lists below it narrow to one team. The **Hierarchy** column shows each case's task and the grade it expects, and the Hierarchy filter lets you show only cases at your level. Click a row to open that patient's chart.
 3. **Review the chart.** Start with **Summary** (banner, vitals trend, problems, meds, labs, microbiology). Then work **Chart Review**: an encounter timeline where each row opens its underlying document (imaging, lab and microbiology receipts, prior notes). Filters (inpatient / outpatient / ED / admissions) narrow the timeline.
 4. **Read the existing notes.** The **Notes** activity is a mailbox-style browser; open notes to cross-reference them in multi-tab previews. Watch for what earlier clinicians did and did not document.
@@ -35,13 +35,16 @@ No account, no backend. Everything you write stays in your own browser (localSto
 
 ```bash
 npm install
-npm run dev      # Vite dev server (default http://localhost:5173)
-npm run build    # type-check + production build
-npm run lint     # eslint
-npm test         # vitest (pure scoring / reflow libs)
+npm run dev           # SPA + API worker + local D1 in one process (http://localhost:5173)
+npm run build         # type-check + production build (dist/client + dist/legend)
+npm run lint          # eslint
+npm test              # vitest, node pool (pure scoring / reflow libs)
+npm run test:workers  # vitest, workerd pool (auth routes against a real local D1)
 ```
 
-The live demo is served as Cloudflare Workers static assets: `npm run build` then `npx wrangler deploy` (config in `wrangler.jsonc`).
+Auth in local dev needs a `.dev.vars` file at the repo root (copy `.dev.vars.example` and fill in a Google OAuth client plus a random `BETTER_AUTH_SECRET`). The guest and Google flows then work against a local D1 database; apply its schema once with `npx wrangler d1 migrations apply legend-db --local`.
+
+The live site runs on a Cloudflare Worker (static assets plus a Hono API, config in `wrangler.jsonc`). Deploy with `npm run deploy` only: it builds first, and a bare `wrangler deploy` without a fresh build would ship the worker without the site.
 
 ## Screenshots
 
@@ -101,7 +104,7 @@ The live demo is served as Cloudflare Workers static assets: `npm run build` the
 
 ## Tech stack
 
-React 19 + TypeScript, built with Vite. Charts via Recharts, icons via lucide-react, resizable panes via react-resizable-panels. Unit tests via Vitest (the pure scoring and reflow libs). No backend: case data is typed and static, and the trainee's identity and notes live in browser localStorage, so there is nothing to provision and no data to leak.
+React 19 + TypeScript, built with Vite. Charts via Recharts, icons via lucide-react, resizable panes via react-resizable-panels. The backend is a Cloudflare Worker: Hono serves the `/api` routes, better-auth handles accounts (guest sessions and Google sign-in) on a D1 (SQLite) database, and the same worker serves the site as static assets. Case data is typed and static; notes and feedback live in browser localStorage until server-side persistence lands. Unit tests via Vitest, in two pools: a node pool for the pure scoring and reflow libs, and a workerd pool that exercises the auth routes against a real local D1.
 
 ## Status
 

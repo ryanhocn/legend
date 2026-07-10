@@ -3,7 +3,9 @@
 > Durable design contract. Survives `/clear` and compaction. Edit this, not your memory.
 > Previous spec (multi-case foundation): DONE 2026-07-06, lives in git history (SPEC.md @ 0d48f4e).
 
-Status: DESIGN APPROVED by Ryan 2026-07-10 (three forks resolved in-session).
+Status: SHIPPED 2026-07-10 (all tasks incl. the gated T8: secrets in prod, remote
+migrations, deploy 86c78d99, live-verified incl. Ryan's Google click-through and
+avatar). Execution record: PLAN.md @ this commit + .superpowers/sdd/progress.md.
 Depends on: Phase 1 (Hono /api worker + D1 legend-db + Cloudflare vite plugin), SHIPPED 2026-07-10.
 
 ## Context (why)
@@ -96,19 +98,19 @@ trainee-visible experience as little as possible.
 
 ## Tasks (indicative — PLAN.md is authoritative once written)
 
-- [ ] Server: better-auth config + Hono mount + secrets plumbing -> verify by auth
+- [x] Server: better-auth config + Hono mount + secrets plumbing -> verify by auth
       endpoints answering locally (session create/read) with real local D1.
-- [ ] Schema: generate better-auth schema, create + apply local migrations (auth
+- [x] Schema: generate better-auth schema, create + apply local migrations (auth
       tables + persona additionalFields) -> verify by `wrangler d1 migrations list`
       + a real-D1 route test.
-- [ ] Client: auth client + App gate on session -> verify by guest flow end-to-end
+- [x] Client: auth client + App gate on session -> verify by guest flow end-to-end
       in dev (anonymous user row exists, app opens, notes attribute correctly).
-- [ ] SignInPage: Google button + persona mode -> verify by first/returning Google
+- [x] SignInPage: Google button + persona mode -> verify by first/returning Google
       flows in dev.
-- [ ] Sign-out: server session end + existing sweep -> verify by cookie gone + row
+- [x] Sign-out: server session end + existing sweep -> verify by cookie gone + row
       session revoked + localStorage swept.
-- [ ] Carry-overs: eslint worker globals override; vitest-pool-workers project.
-- [ ] Gated: remote migrations + `npm run deploy` + live verification of all three
+- [x] Carry-overs: eslint worker globals override; vitest-pool-workers project.
+- [x] Gated: remote migrations + `npm run deploy` + live verification of all three
       flows on legend.ryanhocn.workers.dev.
 
 ## Open questions
