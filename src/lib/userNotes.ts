@@ -37,7 +37,7 @@ export function buildUserNote(
   const timestamp = Math.floor(now.getTime() / 1000);
   return {
     kind: "note",
-    id: `user-note-${timestamp}-${draft.id}`,
+    id: "", // the server assigns the real id when the note is POSTed
     encounterId: "enc-admission",
     category: CATEGORY_BY_TYPE[draft.noteType] ?? "Progress",
     noteType: draft.noteType,
@@ -84,6 +84,17 @@ export function buildAddendumBlock(user: UserProfile, text: string, now: Date): 
 
 export function appendAddendum(existing: string | undefined, block: string): string {
   return existing ? `${existing}\n\n${block}` : block;
+}
+
+/** Fold server addendum rows into the per-note display blocks. */
+export function foldAddenda(
+  rows: { noteId: string; body: string; createdAt: number }[],
+): Record<string, string> {
+  const folded: Record<string, string> = {};
+  for (const row of [...rows].sort((a, b) => a.createdAt - b.createdAt)) {
+    folded[row.noteId] = appendAddendum(folded[row.noteId], row.body);
+  }
+  return folded;
 }
 
 /** Re-file an edited incomplete user note in place: same identity, new content. */

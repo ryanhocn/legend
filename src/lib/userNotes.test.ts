@@ -4,6 +4,7 @@ import {
   appendAddendum,
   buildAddendumBlock,
   buildUserNote,
+  foldAddenda,
   formatStamp,
   generateHcpId,
   isOwnNote,
@@ -63,10 +64,11 @@ describe("buildUserNote", () => {
     expect(note.fileTime).toBe("—");
   });
 
-  test("ids are unique per draft and time", () => {
+  test("server assigns the id on POST", () => {
     const a = buildUserNote(draft, user, "x", "signed", now);
     const b = buildUserNote({ ...draft, id: "draft-2" }, user, "x", "signed", now);
-    expect(a.id).not.toBe(b.id);
+    expect(a.id).toBe("");
+    expect(b.id).toBe("");
   });
 });
 
@@ -187,5 +189,20 @@ describe("buildUserNote authorId", () => {
     const draft: NoteDraft = { id: "draft-1", noteType: "Progress Note", service: "(A) GS", body: "" };
     const note = buildUserNote(draft, testUser, "text", "signed", new Date(2026, 6, 7));
     expect(note.authorId).toBe("d912345");
+  });
+});
+
+describe("foldAddenda", () => {
+  test("folds rows into per-note blocks in createdAt order", () => {
+    const folded = foldAddenda([
+      { noteId: "n1", body: "second", createdAt: 2 },
+      { noteId: "n1", body: "first", createdAt: 1 },
+      { noteId: "n2", body: "only", createdAt: 3 },
+    ]);
+    expect(folded["n1"]).toBe("first\n\nsecond");
+    expect(folded["n2"]).toBe("only");
+  });
+  test("returns an empty record for no rows", () => {
+    expect(foldAddenda([])).toEqual({});
   });
 });
