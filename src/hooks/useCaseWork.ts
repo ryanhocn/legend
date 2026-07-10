@@ -48,13 +48,13 @@ export function useCaseWork(caseId: string): CaseWorkState {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchCaseWork(caseId), fetchCaseSession(caseId)]).then(
-      ([work, session]) => {
+    // The work fetch is the essential load: it alone drives loaded/loadError.
+    fetchCaseWork(caseId).then(
+      (work) => {
         if (cancelled) return;
         setNotes(work.notes);
         setAddendaRows(work.addenda);
         setAttempt(work.attempt);
-        setSimNow(session.simNow);
         setLoaded(true);
       },
       (err: unknown) => {
@@ -66,6 +66,17 @@ export function useCaseWork(caseId: string): CaseWorkState {
         if (err instanceof ApiError && err.status === 401) window.location.reload();
         else setLoadError("Couldn't load your notes from the server.");
       },
+    );
+    // The sim clock is additive and non-essential: fetch it independently and
+    // swallow any failure so it can NEVER block the notes render (e.g. before
+    // migration 0004 is applied, /session 500s). It degrades to simNow = 0,
+    // which keeps the reveal inert. A dead session surfaces via the work
+    // fetch's own 401 reload above, so nothing is lost by swallowing here.
+    fetchCaseSession(caseId).then(
+      (session) => {
+        if (!cancelled) setSimNow(session.simNow);
+      },
+      () => {},
     );
     return () => {
       cancelled = true;
