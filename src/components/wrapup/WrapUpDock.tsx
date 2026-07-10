@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Activity, X } from "lucide-react";
+import type { StoredAttempt } from "../../lib/api";
 import type { ClinicalNote, NoteDraft, UserProfile } from "../../types";
 import { WrapUpModule } from "./WrapUpModule";
 
@@ -26,6 +27,9 @@ export function WrapUpDock({
   editors,
   userNotes,
   user,
+  attempt,
+  onSubmitAttempt,
+  onClearAttempt,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -33,6 +37,9 @@ export function WrapUpDock({
   editors: NoteDraft[];
   userNotes: ClinicalNote[];
   user: UserProfile;
+  attempt: StoredAttempt | null;
+  onSubmitAttempt: (text: string, signed: boolean) => void;
+  onClearAttempt: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -89,7 +96,15 @@ export function WrapUpDock({
             </button>
           </div>
           <div className="wrapup-dock-body">
-            <WrapUpModule editors={editors} userNotes={userNotes} user={user} embedded />
+            <WrapUpModule
+              editors={editors}
+              userNotes={userNotes}
+              user={user}
+              attempt={attempt}
+              onSubmitAttempt={onSubmitAttempt}
+              onClearAttempt={onClearAttempt}
+              embedded
+            />
           </div>
         </div>
       )}

@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { ClipboardCheck } from "lucide-react";
-import { usePersistentState } from "../../hooks/usePersistentState";
 import { formatClinician } from "../../lib/clinician";
 import { gradeLabel, isOverreach } from "../../lib/grades";
 import { htmlToPlainText, wordCount } from "../../lib/noteText";
 import { scoreNote } from "../../lib/rubric";
-import { formatStamp } from "../../lib/userNotes";
-import { attemptKey, parseAttempt, type StoredAttempt } from "../../lib/wrapupAttempt";
+import type { StoredAttempt } from "../../lib/api";
 import { useCase } from "../../context/CaseContext";
 import type { ClinicalNote, NoteDraft, UserProfile } from "../../types";
 import { FeedbackReport } from "./FeedbackReport";
@@ -29,20 +27,21 @@ export function WrapUpModule({
   editors,
   userNotes,
   user,
+  attempt,
+  onSubmitAttempt,
+  onClearAttempt,
   embedded = false,
 }: {
   editors: NoteDraft[];
   userNotes: ClinicalNote[];
   user: UserProfile;
+  attempt: StoredAttempt | null;
+  onSubmitAttempt: (text: string, signed: boolean) => void;
+  onClearAttempt: () => void;
   /** When docked in the floating panel, hide the module's own title row. */
   embedded?: boolean;
 }) {
   const { rubric } = useCase();
-  const [storedAttempt, setStoredAttempt] = usePersistentState(
-    attemptKey(rubric.caseId),
-    "",
-  );
-  const attempt = parseAttempt(storedAttempt);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const candidates: Candidate[] = [
@@ -84,13 +83,7 @@ export function WrapUpModule({
 
   function submit() {
     if (!selected) return;
-    setStoredAttempt(
-      JSON.stringify({
-        text: selected.text,
-        at: formatStamp(new Date()),
-        signed: selected.signed,
-      } satisfies StoredAttempt),
-    );
+    onSubmitAttempt(selected.text, selected.signed);
   }
 
   return (
@@ -119,7 +112,7 @@ export function WrapUpModule({
               expects {gradeLabel(rubric.task.minGrade)}. Escalate to your senior;
               do not improvise senior reviews.
             </p>
-            <button onClick={() => setStoredAttempt("")}>Try another note</button>
+            <button onClick={onClearAttempt}>Try another note</button>
           </div>
         ) : (
           <FeedbackReport
@@ -127,7 +120,7 @@ export function WrapUpModule({
             rubric={rubric}
             text={attempt.text}
             scoredAt={attempt.at}
-            onReset={() => setStoredAttempt("")}
+            onReset={onClearAttempt}
           />
         )
       ) : candidates.length === 0 ? (

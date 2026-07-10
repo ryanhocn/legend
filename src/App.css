@@ -1027,6 +1027,14 @@ button {
 
 /* Note editor (right rail NoteWriter) */
 
+.editor-save-error {
+  padding: 6px 10px;
+  background: #fdecea;
+  border-bottom: 1px solid #f5c6c0;
+  color: #b3261e;
+  font-size: 12px;
+}
+
 .note-editor-pane {
   height: 100%;
   display: flex;

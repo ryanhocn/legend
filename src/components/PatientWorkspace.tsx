@@ -19,41 +19,20 @@ import { SummaryModule } from "./summary/SummaryModule";
 import { WrapUpDock } from "./wrapup/WrapUpDock";
 import { useCase } from "../context/CaseContext";
 import { mainTabs } from "../data/tabs";
-import { usePersistentState } from "../hooks/usePersistentState";
+import { useCaseWork } from "../hooks/useCaseWork";
 import { htmlToPlainText, wordCount } from "../lib/noteText";
-import { addendaKey, userNotesKey } from "../lib/session";
 import {
   appendAddendum,
   buildAddendumBlock,
   buildUserNote,
-  isOwnNote,
   refileUserNote,
 } from "../lib/userNotes";
 import { plainTextToEditorHtml } from "../lib/smarttext";
-import { saveWrapupAttempt } from "../lib/wrapupAttempt";
 import type { CaseUiState, ClinicalNote, Note, NoteStatus, UserProfile } from "../types";
 
 // Draft ids only need uniqueness within a session; module scope survives the
 // per-case remounts (the workspace is keyed by caseId).
 let draftSeq = 0;
-
-function parseUserNotes(raw: string): ClinicalNote[] {
-  try {
-    const parsed = JSON.parse(raw) as ClinicalNote[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function parseAddenda(raw: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
 
 /**
  * One patient's chart: sidebar + tabbed modules + right rail + sticky note +
@@ -76,16 +55,10 @@ export function PatientWorkspace({
 }) {
   const activeCase = useCase();
   const { mainTab, chartTab, selectedDocId, editors, activeEditorId, wrapupOpen } = ui;
-  const [storedUserNotes, setStoredUserNotes] = usePersistentState(
-    userNotesKey(activeCase.id),
-    "[]",
-  );
-  const userNotes = parseUserNotes(storedUserNotes);
-  const [storedAddenda, setStoredAddenda] = usePersistentState(
-    addendaKey(activeCase.id),
-    "{}",
-  );
-  const addenda = parseAddenda(storedAddenda);
+  const work = useCaseWork(activeCase.id);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const userNotes = work.notes;
+  const addenda = work.addenda;
   const rightRef = useRef<PanelImperativeHandle>(null);
   const [rightCollapsed, setRightCollapsed] = useState(false);
 
@@ -131,7 +104,11 @@ export function PatientWorkspace({
     rightRef.current?.expand();
   }
 
-  const ownNote = (note: Note) => isOwnNote(note, user.hcpId, activeCase.playerHcpId);
+  // A note is "yours" if the server filed it under your account for this case,
+  // or it is the static persona note this case has you play.
+  const isUserNote = (note: Note) => userNotes.some((n) => n.id === note.id);
+  const ownNote = (note: Note) =>
+    isUserNote(note) || (!!note.authorId && note.authorId === activeCase.playerHcpId);
 
   // Reopen an incomplete user note as an editor draft; Sign/Pend re-files it in
   // place. Focuses the existing tab if one is already open for this note.
@@ -182,49 +159,50 @@ export function PatientWorkspace({
     onPatch({ editors: editors.filter((draft) => draft.id !== id) });
   }
 
-  function deleteUserNote(id: string) {
-    setStoredUserNotes(JSON.stringify(userNotes.filter((note) => note.id !== id)));
-    if (selectedDocId === id) onPatch({ selectedDocId: null });
+  async function deleteUserNote(id: string) {
+    try {
+      await work.deleteNote(id);
+      if (selectedDocId === id) onPatch({ selectedDocId: null });
+    } catch {
+      setSaveError("Couldn't delete the note on the server. Try again.");
+    }
   }
 
   // Sign publishes the draft (or appends its addendum); Pend files it as an
   // incomplete note. Edit drafts re-file their target in place; a deleted
   // target degrades to filing as a new note. All paths remove the draft tab.
-  function finishDraft(id: string, status: NoteStatus) {
+  // Server-first: the draft tab only closes once the write lands, so a failed
+  // save never destroys work.
+  async function finishDraft(id: string, status: NoteStatus) {
     const draft = editors.find((d) => d.id === id);
     if (!draft) return;
     const text = htmlToPlainText(draft.body);
     if (wordCount(text) === 0) return;
     const remaining = editors.filter((d) => d.id !== id);
-
-    if (draft.mode === "addendum" && draft.targetNoteId) {
-      const block = buildAddendumBlock(user, text, new Date());
-      setStoredAddenda(
-        JSON.stringify({
-          ...addenda,
-          [draft.targetNoteId]: appendAddendum(addenda[draft.targetNoteId], block),
-        }),
-      );
-      onPatch({ editors: remaining });
-      return;
-    }
-
-    const target =
-      draft.mode === "edit" && draft.targetNoteId
-        ? userNotes.find((n) => n.id === draft.targetNoteId)
-        : undefined;
-    const note = target
-      ? refileUserNote(target, draft, text, status, new Date())
-      : buildUserNote(draft, user, text, status, new Date());
-    const nextNotes = target
-      ? userNotes.map((n) => (n.id === target.id ? note : n))
-      : [...userNotes, note];
-    setStoredUserNotes(JSON.stringify(nextNotes));
-    if (status === "signed") {
-      saveWrapupAttempt(activeCase.id, text);
-      onPatch({ editors: remaining, wrapupOpen: true });
-    } else {
-      onPatch({ editors: remaining });
+    setSaveError(null);
+    try {
+      if (draft.mode === "addendum" && draft.targetNoteId) {
+        await work.addAddendum(draft.targetNoteId, buildAddendumBlock(user, text, new Date()));
+        onPatch({ editors: remaining });
+        return;
+      }
+      const target =
+        draft.mode === "edit" && draft.targetNoteId
+          ? userNotes.find((n) => n.id === draft.targetNoteId)
+          : undefined;
+      if (target) {
+        await work.refileNote(refileUserNote(target, draft, text, status, new Date()));
+      } else {
+        await work.createNote(buildUserNote(draft, user, text, status, new Date()));
+      }
+      if (status === "signed") {
+        await work.saveAttempt(text, true);
+        onPatch({ editors: remaining, wrapupOpen: true });
+      } else {
+        onPatch({ editors: remaining });
+      }
+    } catch {
+      setSaveError("Couldn't save to the server. Your draft is untouched; try again.");
     }
   }
 
@@ -255,6 +233,7 @@ export function PatientWorkspace({
         onChangeNoteType={updateEditorNoteType}
         onSign={(id) => finishDraft(id, "signed")}
         onPend={(id) => finishDraft(id, "incomplete")}
+        error={saveError}
       />
     ) : (
       <DocumentPanel
@@ -276,6 +255,10 @@ export function PatientWorkspace({
               <MainTabBar selected={mainTab} onSelect={(tab) => onPatch({ mainTab: tab })} />
 
               <div className="module-body">
+                {work.loadError && (
+                  <div className="editor-save-error">{work.loadError}</div>
+                )}
+
                 {mainTab === "summary" && <SummaryModule />}
 
                 {mainTab === "chart" && (
@@ -292,6 +275,7 @@ export function PatientWorkspace({
                     onEditNote={openEditDraft}
                     onAddendumNote={openAddendumDraft}
                     ownNote={ownNote}
+                    isUserNote={isUserNote}
                   />
                 )}
 
@@ -305,6 +289,7 @@ export function PatientWorkspace({
                     onEditNote={openEditDraft}
                     onAddendumNote={openAddendumDraft}
                     ownNote={ownNote}
+                    isUserNote={isUserNote}
                   />
                 )}
 
@@ -371,6 +356,13 @@ export function PatientWorkspace({
         editors={editors}
         userNotes={userNotes}
         user={user}
+        attempt={work.attempt}
+        onSubmitAttempt={(text, signed) => {
+          work.saveAttempt(text, signed).catch(() => setSaveError("Couldn't save the attempt."));
+        }}
+        onClearAttempt={() => {
+          work.clearAttempt().catch(() => setSaveError("Couldn't clear the attempt."));
+        }}
       />
     </>
   );

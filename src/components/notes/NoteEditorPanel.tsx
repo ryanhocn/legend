@@ -15,6 +15,7 @@ export function NoteEditorPanel({
   onChangeNoteType,
   onSign,
   onPend,
+  error,
 }: {
   editors: NoteDraft[];
   activeId: string | null;
@@ -24,11 +25,13 @@ export function NoteEditorPanel({
   onChangeNoteType: (id: string, noteType: string) => void;
   onSign: (id: string) => void;
   onPend: (id: string) => void;
+  error: string | null;
 }) {
   const active = editors.find((draft) => draft.id === activeId) ?? null;
 
   return (
     <div className="note-editor-pane">
+      {error && <div className="editor-save-error">{error}</div>}
       <div className="note-editor-tabbar" role="tablist">
         {editors.map((draft) => (
           <div
