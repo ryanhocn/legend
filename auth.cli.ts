@@ -19,7 +19,10 @@ export const auth = betterAuth({
   baseURL: "http://localhost:5173",
   basePath: "/api/auth",
   secret: "",
-  plugins: [anonymous({ emailDomainName: "legend.local" })],
+  // onLinkAccount is a no-op here: this stub DB has no work tables, and
+  // onLinkAccount doesn't affect generated schema. Kept in sync with
+  // src/worker/auth.ts's plugin shape (real re-keying lives in rekey.ts).
+  plugins: [anonymous({ emailDomainName: "legend.local", onLinkAccount: async () => {} })],
   socialProviders: {
     google: {
       clientId: "",

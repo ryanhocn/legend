@@ -4,6 +4,7 @@ import { env } from "cloudflare:test";
 import { describe, expect, test } from "vitest";
 import { createAuth } from "./auth";
 import worker from "./index";
+import { rekeyUserWork } from "./rekey";
 
 describe("user_work schema", () => {
   test("deleting a user cascades to their work rows", async () => {
@@ -206,5 +207,40 @@ describe("addenda and attempts", () => {
     expect(del.status).toBe(204);
     workRes = await callWorker("/api/cases/cholangitis001/work", { headers: { cookie } });
     expect(((await workRes.json()) as { attempt: unknown }).attempt).toBeNull();
+  });
+});
+
+describe("rekeyUserWork", () => {
+  test("moves all three tables to the new user, guest attempt winning conflicts", async () => {
+    const auth = createAuth(env as unknown as Env, "http://localhost");
+    const anon = (await auth.api.signInAnonymous())!.user.id;
+    const google = (await auth.api.signInAnonymous())!.user.id; // stand-in row for the linked account
+
+    const seed = (userId: string, text: string) =>
+      env.DB.prepare(
+        `INSERT INTO wrapup_attempt (userId, caseId, text, at, signed, updatedAt)
+         VALUES (?1, 'cholangitis001', ?2, '10/07 12:00', 1, 1)`,
+      ).bind(userId, text).run();
+    await seed(anon, "guest attempt");
+    await seed(google, "old google attempt");
+    await env.DB.prepare(
+      `INSERT INTO user_note (id, userId, caseId, status, payload, createdAt, updatedAt)
+       VALUES ('rk-n1', ?1, 'cholangitis001', 'signed', '{}', 1, 1)`,
+    ).bind(anon).run();
+    await env.DB.prepare(
+      `INSERT INTO note_addendum (id, userId, caseId, noteId, body, createdAt)
+       VALUES ('rk-a1', ?1, 'cholangitis001', 'rk-n1', 'x', 1)`,
+    ).bind(anon).run();
+
+    await rekeyUserWork(env.DB, anon, google);
+
+    const note = await env.DB.prepare(`SELECT userId FROM user_note WHERE id = 'rk-n1'`).first<{ userId: string }>();
+    expect(note?.userId).toBe(google);
+    const add = await env.DB.prepare(`SELECT userId FROM note_addendum WHERE id = 'rk-a1'`).first<{ userId: string }>();
+    expect(add?.userId).toBe(google);
+    const attempts = await env.DB.prepare(
+      `SELECT text FROM wrapup_attempt WHERE userId = ?1`,
+    ).bind(google).all<{ text: string }>();
+    expect(attempts.results.map((r) => r.text)).toEqual(["guest attempt"]);
   });
 });

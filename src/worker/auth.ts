@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { anonymous } from "better-auth/plugins";
+import { rekeyUserWork } from "./rekey";
 
 /**
  * Same format as src/lib/userNotes.ts generateHcpId (kept separate so the
@@ -15,7 +16,14 @@ export function createAuth(env: Env, baseURL: string) {
     baseURL,
     basePath: "/api/auth",
     secret: env.BETTER_AUTH_SECRET,
-    plugins: [anonymous({ emailDomainName: "legend.local" })],
+    plugins: [
+      anonymous({
+        emailDomainName: "legend.local",
+        onLinkAccount: async ({ anonymousUser, newUser }) => {
+          await rekeyUserWork(env.DB, anonymousUser.user.id, newUser.user.id);
+        },
+      }),
+    ],
     socialProviders: {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
