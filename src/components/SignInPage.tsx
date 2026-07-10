@@ -1,29 +1,42 @@
 import { useState } from "react";
 import { LogIn } from "lucide-react";
 import { GRADES } from "../lib/grades";
-import { generateHcpId } from "../lib/userNotes";
-import type { Grade, UserProfile } from "../types";
+import type { Grade } from "../types";
+
+export type PersonaInput = { forename: string; surname: string; grade: Grade };
 
 /**
- * Demo sign-in gate: captures the trainee's name so their notes are
- * attributed distinctly from the hardcoded case content. No auth — this is a
- * training mockup, the name only feeds display and note authorship.
+ * Sign-in gate: "signin" mode offers the guest (anonymous) form plus Google;
+ * "persona" mode is shown to a signed-in Google account that hasn't yet
+ * captured a persona (forename/surname/grade), prefilled from the Google name.
+ * Persona fields feed display and note authorship; hcpId is server-owned.
  */
-export function SignInPage({ onComplete }: { onComplete: (user: UserProfile) => void }) {
-  const [forename, setForename] = useState("");
-  const [surname, setSurname] = useState("");
+export function SignInPage({
+  mode,
+  initialName,
+  onComplete,
+  onGoogle,
+}: {
+  mode: "signin" | "persona";
+  initialName?: { forename: string; surname: string };
+  onComplete: (persona: PersonaInput) => Promise<void>;
+  onGoogle: () => void;
+}) {
+  const [forename, setForename] = useState(initialName?.forename ?? "");
+  const [surname, setSurname] = useState(initialName?.surname ?? "");
   const [grade, setGrade] = useState<Grade>("fy");
-  const ready = forename.trim().length > 0 && surname.trim().length > 0;
+  const [saving, setSaving] = useState(false);
+  const ready = forename.trim().length > 0 && surname.trim().length > 0 && !saving;
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!ready) return;
-    onComplete({
-      forename: forename.trim(),
-      surname: surname.trim(),
-      hcpId: generateHcpId(),
-      grade,
-    });
+    setSaving(true);
+    try {
+      await onComplete({ forename: forename.trim(), surname: surname.trim(), grade });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -67,8 +80,22 @@ export function SignInPage({ onComplete }: { onComplete: (user: UserProfile) => 
 
         <button className="signin-submit" type="submit" disabled={!ready}>
           <LogIn size={14} />
-          Start training
+          {mode === "persona" ? "Save and start training" : "Start training"}
         </button>
+
+        {mode === "signin" && (
+          <>
+            <div className="signin-divider">or</div>
+            <button
+              className="signin-submit signin-google"
+              type="button"
+              onClick={onGoogle}
+            >
+              <LogIn size={14} />
+              Sign in with Google
+            </button>
+          </>
+        )}
 
         <div className="signin-disclaimer">
           All patient data are synthetic. For education and simulation only. Not

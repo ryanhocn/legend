@@ -2831,6 +2831,30 @@ button {
   cursor: default;
 }
 
+.signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  color: #8a8f78;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.signin-divider::before,
+.signin-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #9aa37e;
+}
+
+.signin-google {
+  background: #fff;
+  color: #2c3d25;
+  border: 1px solid #9aa37e;
+}
+
 .signin-disclaimer {
   margin-top: 8px;
   color: #8a8f78;

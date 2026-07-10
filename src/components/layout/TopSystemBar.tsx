@@ -60,7 +60,7 @@ export function TopSystemBar({
                 "Sign out? This clears your notes and feedback so the next trainee starts fresh.",
               )
             ) {
-              signOut();
+              void signOut();
             }
           }}
         >

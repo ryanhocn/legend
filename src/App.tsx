@@ -7,24 +7,15 @@ import { RotateGate } from "./components/RotateGate";
 import { SignInPage } from "./components/SignInPage";
 import { CaseContext } from "./context/CaseContext";
 import { getCase } from "./data/patients";
-import { usePersistentState } from "./hooks/usePersistentState";
-import { USER_KEY } from "./lib/session";
-import type { CaseUiState, UserProfile } from "./types";
+import { authClient, useSession } from "./lib/authClient";
+import type { CaseUiState, Grade, UserProfile } from "./types";
 import "./App.css";
 
-function parseUser(raw: string): UserProfile | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as UserProfile;
-    return typeof parsed.forename === "string" &&
-      typeof parsed.surname === "string" &&
-      typeof parsed.hcpId === "string" &&
-      typeof parsed.grade === "string"
-      ? parsed
-      : null;
-  } catch {
-    return null;
-  }
+/** First token as forename, rest as surname; empty-safe for a missing display name. */
+function splitName(name?: string): { forename: string; surname: string } | undefined {
+  if (!name) return undefined;
+  const [forename, ...rest] = name.trim().split(/\s+/);
+  return { forename: forename ?? "", surname: rest.join(" ") };
 }
 
 // Land on Notes so a fresh trainee immediately sees the write-a-note call to action.
@@ -38,8 +29,16 @@ const DEFAULT_UI: CaseUiState = {
 };
 
 function App() {
-  const [storedUser, setStoredUser] = usePersistentState(USER_KEY, "");
-  const user = parseUser(storedUser);
+  const { data: session, isPending } = useSession();
+  const user: UserProfile | null =
+    session?.user && session.user.forename && session.user.surname && session.user.grade && session.user.hcpId
+      ? {
+          forename: session.user.forename,
+          surname: session.user.surname,
+          grade: session.user.grade as Grade,
+          hcpId: session.user.hcpId,
+        }
+      : null;
 
   // Open charts (patient tabs) + which one is focused. null focus with tabs
   // still open means the trainee is browsing the Patient Lists activity.
@@ -81,11 +80,21 @@ function App() {
     }));
   }
 
+  if (isPending) return null; // brief blank while the session loads
+
   if (!user) {
     return (
       <>
         <RotateGate />
-        <SignInPage onComplete={(profile) => setStoredUser(JSON.stringify(profile))} />
+        <SignInPage
+          mode={session?.user ? "persona" : "signin"}
+          initialName={splitName(session?.user?.name)}
+          onComplete={async (p) => {
+            if (!session?.user) await authClient.signIn.anonymous();
+            await authClient.updateUser({ forename: p.forename, surname: p.surname, grade: p.grade });
+          }}
+          onGoogle={() => authClient.signIn.social({ provider: "google", callbackURL: "/" })}
+        />
       </>
     );
   }
