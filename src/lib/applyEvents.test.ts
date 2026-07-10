@@ -27,6 +27,12 @@ function userNote(id: string, addendum?: string): ClinicalNote {
   };
 }
 
+describe("base bundle invariant", () => {
+  test("notes equals the kind:note subset of documents", () => {
+    expect(bundle.notes).toEqual(bundle.documents.filter((d) => d.kind === "note"));
+  });
+});
+
 describe("applyEvents identity + immutability", () => {
   test("returns the same reference for no events", () => {
     expect(applyEvents(bundle, [])).toBe(bundle);

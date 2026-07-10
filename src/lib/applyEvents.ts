@@ -28,6 +28,10 @@ export function applyEvents(bundle: CaseBundle, events: CaseEvent[]): CaseBundle
             : doc,
         );
         break;
+      default: {
+        const _exhaustive: never = event;
+        return _exhaustive;
+      }
     }
   }
   const notes = documents.filter((doc): doc is ClinicalNote => doc.kind === "note");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ApiError,
   apiAddAddendum,
@@ -66,11 +66,13 @@ export function useCaseWork(caseId: string): CaseWorkState {
     };
   }, [caseId]);
 
+  const addenda = useMemo(() => foldAddenda(addendaRows), [addendaRows]);
+
   return {
     loaded,
     loadError,
     notes,
-    addenda: foldAddenda(addendaRows),
+    addenda,
     attempt,
     async createNote(note) {
       const stored = await apiCreateNote(caseId, note);
