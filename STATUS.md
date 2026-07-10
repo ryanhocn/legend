@@ -2,10 +2,12 @@
 
 > Living state. Update at the end of every working block so a fresh session can resume from here after `/clear`.
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 Branch / worktree: main
-Latest session: backend research + plan for user accounts (see "Next concrete step"
-and "Blocked / decisions needed"). Prior sessions: hierarchy system + case fleet
+Latest session: Phase 1 backend foundation EXECUTED + DEPLOYED (d1f43d8..d7659a5;
+Hono /api worker, D1 legend-db, Cloudflare vite plugin, TS wiring; live
+/api/health green). Prior: backend research + plan for user accounts (see "Next
+concrete step"). Prior sessions: hierarchy system + case fleet
 (68e1f64..8574cee), multi-case foundation (8d694ea registry, dec89c0 patient
 switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
 (3b04aeb..70c80ca), tab restructure (47ee20b..54a1ea1), note feedback
@@ -31,7 +33,7 @@ switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
   the same Epic stationery; preview tabs narrower + freeze-on-close.
 - Handoff doc reconciles (this session + prior): README, SPEC, CLAUDE.md match the code.
 - Live demo deployed to Cloudflare **Workers static assets** (not Pages; Pages is legacy
-  for new projects): https://legend.ryanho06.workers.dev. Config in `wrangler.jsonc`
+  for new projects): https://legend.ryanhocn.workers.dev. Config in `wrangler.jsonc`
   (`not_found_handling: "single-page-application"` handles deep links). Redeploy:
   `npm run deploy` ONLY (build-first). Since the Cloudflare vite plugin (phase 1),
   a bare `wrangler deploy` without a fresh build falls back to the source
@@ -62,6 +64,20 @@ switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
 - Context shift (2026-07-09): the hackathon application did NOT come through.
   Judges no longer matter; optimize for real users and the product roadmap, not
   a demo. Memory [[legend-hackathon-context]] updated to match.
+- Phase 1 backend foundation (2026-07-10, d1f43d8..d7659a5, subagent-driven off
+  PLAN.md, every task review-clean, browser-verified 7/7, DEPLOYED by Ryan +
+  live-verified): Hono worker at `src/worker/index.ts` (basePath /api, GET
+  /api/health with D1 `SELECT 1` probe -> {"ok":true,"db":true} in prod); D1
+  `legend-db` provisioned (id e0fcc134-51b7-477f-a4cc-23786fafeb6f, WEUR; remote
+  is empty, local replica in .wrangler/state, migrations start phase 2);
+  wrangler.jsonc in SPA+API shape (main + run_worker_first ["/api/*"] +
+  nodejs_compat, assets.directory removed — vite plugin manages output);
+  @cloudflare/vite-plugin so `npm run dev` = SPA + workerd + local D1 in one
+  process; tsconfig.worker.json project reference (workerd types via generated,
+  committed, eslint-ignored worker-configuration.d.ts — regen with
+  `npm run cf-typegen` after binding changes); vitest pinned to vitest.config.ts.
+  Live URL corrected everywhere: legend.ryanhocn.workers.dev (ryanho06 was wrong
+  in docs). Suite now 182 tests / 23 files.
 
 ## In flight
 - `src/data/patients/hyponatraemia001/` is a deliberately uncommitted partial case
@@ -103,11 +119,16 @@ sources); recommended stack:
   micro: wound culture is gram-negative only, blood cultures clear — continue
   metro + cipro IV). Async request/response, D1 rows, no real-time transport.
 - Phases: (0) persist unsigned drafts — DISPUTED, see below; (1) Worker+Hono
-  foundation ~0.5d — **PLAN.md written 2026-07-09, ready to execute** (D1
-  provisioned in-phase, deploy task gated on Ryan); (2) better-auth accounts
-  ~1.5-2d; (3) notes/attempts persistence API + one-shot `POST /api/import`
-  localStorage migration ~1.5-2d; (4) Patient Message channel + authenticated
-  LLM proxy route. PLAN.md is per-phase; phase 2 plan after phase 1 ships.
+  foundation — **SHIPPED 2026-07-10** (see Done); (2) better-auth accounts
+  ~1.5-2d — NEXT: spec + plan, then execute (Google-only + anonymous guest
+  plugin, D1 migrations begin here); (3) notes/attempts persistence API +
+  one-shot `POST /api/import` localStorage migration ~1.5-2d; (4) Patient
+  Message channel + authenticated LLM proxy route. PLAN.md is per-phase;
+  rewrite it for phase 2 (phase 1 plan is now historical).
+- Phase-2 carry-overs from phase-1 reviews: add an eslint globals override for
+  `src/worker/**` when real worker code lands (config currently lints workers
+  with browser globals); real-D1 route tests via @cloudflare/vitest-pool-workers
+  (peer-compatible with vitest 4.1) as a separate vitest project.
 - Phase 0 dispute (2026-07-09): Ryan believes unsigned drafts already survive
   reload; the code says otherwise — drafts live in `caseUi.editors`, plain
   `useState` at App.tsx:49 (and `openCaseIds` App.tsx:46), wiped on reload.

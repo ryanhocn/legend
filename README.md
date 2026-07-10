@@ -12,7 +12,7 @@ It recreates the parts of an electronic health record you actually have to navig
 
 ## Live demo
 
-**https://legend.ryanho06.workers.dev**
+**https://legend.ryanhocn.workers.dev**
 
 No account, no backend. Everything you write stays in your own browser (localStorage), so there is nothing to register and nothing to leak. Signing out clears it.
 

@@ -212,11 +212,11 @@ Global constraints:
 - Files: none (deploy only; STATUS.md update after)
 - Change: `npm run deploy` (= `npm run build && wrangler deploy`; wrangler follows the plugin's generated deploy config automatically).
 - Verify:
-  - `curl https://legend.ryanho06.workers.dev/api/health` -> `{"ok":true,"db":true}` (remote D1 binding, `SELECT 1`, no migrations required).
-  - https://legend.ryanho06.workers.dev loads the SPA; deep link (e.g. a refresh inside a chart) still resolves via `single-page-application` handling.
+  - `curl https://legend.ryanhocn.workers.dev/api/health` -> `{"ok":true,"db":true}` (remote D1 binding, `SELECT 1`, no migrations required).
+  - https://legend.ryanhocn.workers.dev loads the SPA; deep link (e.g. a refresh inside a chart) still resolves via `single-page-application` handling.
   - Update STATUS.md (phase 1 done, dist layout note, deploy script) and commit.
 - Depends on: T5, and Ryan's approval.
 
 ## Verification target (whole feature)
 
-`npm test` (all green incl. 2 new worker tests) && `npx tsc -b` (clean) && `npm run lint` (no new errors) && `npm run dev` serving both http://localhost:5173 (SPA, HMR) and `/api/health` -> `{"ok":true,"db":true}` from local D1 && `npm run build` emitting `dist/client` + `dist/legend`. Live: `/api/health` green on legend.ryanho06.workers.dev after the gated T6 deploy.
+`npm test` (all green incl. 2 new worker tests) && `npx tsc -b` (clean) && `npm run lint` (no new errors) && `npm run dev` serving both http://localhost:5173 (SPA, HMR) and `/api/health` -> `{"ok":true,"db":true}` from local D1 && `npm run build` emitting `dist/client` + `dist/legend`. Live: `/api/health` green on legend.ryanhocn.workers.dev after the gated T6 deploy.
