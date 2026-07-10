@@ -119,16 +119,26 @@ sources); recommended stack:
   micro: wound culture is gram-negative only, blood cultures clear — continue
   metro + cipro IV). Async request/response, D1 rows, no real-time transport.
 - Phases: (0) persist unsigned drafts — DISPUTED, see below; (1) Worker+Hono
-  foundation — **SHIPPED 2026-07-10** (see Done); (2) better-auth accounts
-  ~1.5-2d — NEXT: spec + plan, then execute (Google-only + anonymous guest
-  plugin, D1 migrations begin here); (3) notes/attempts persistence API +
-  one-shot `POST /api/import` localStorage migration ~1.5-2d; (4) Patient
-  Message channel + authenticated LLM proxy route. PLAN.md is per-phase;
-  rewrite it for phase 2 (phase 1 plan is now historical).
-- Phase-2 carry-overs from phase-1 reviews: add an eslint globals override for
-  `src/worker/**` when real worker code lands (config currently lints workers
-  with browser globals); real-D1 route tests via @cloudflare/vitest-pool-workers
-  (peer-compatible with vitest 4.1) as a separate vitest project.
+  foundation — SHIPPED 2026-07-10; (2) better-auth accounts — **BUILT
+  2026-07-10, T1-T7 + fixes complete (7ee4b06..HEAD), final review READY TO
+  SHIP; T8 (prod secrets + remote migrations + deploy) awaiting Ryan's go**;
+  (3) notes/attempts persistence API + import ~1.5-2d; (4) Patient Message +
+  LLM proxy. Both phase-1 carry-overs landed in phase 2 (worker eslint
+  globals; real-D1 vitest-pool-workers project, 2 tests).
+- **Phase-3 entry warnings (from the phase-2 final review — read before
+  starting phase 3):**
+  - Key server-side note ownership on better-auth `user.id`, NOT `hcpId`:
+    hcpId has no UNIQUE constraint and only a 100k value space (birthday
+    collisions in the low hundreds of users), and `isOwnNote`'s `user-note-`
+    prefix backstop must be retired once notes are server-side.
+  - Anonymous users are never garbage-collected: every guest mints a user+
+    session row forever. Needs a purge story (anon users with no linked
+    account past N days) before real traffic.
+  - `baseURL` derives from the request origin — fine for single-origin
+    workers.dev; switch to explicit `baseURL`/`trustedOrigins` the moment a
+    custom domain is added.
+  - `src/lib/userNotes.ts` generateHcpId is now dead in prod code (server
+    generates hcpId); remove with the phase-3 refactor.
 - Phase 0 dispute (2026-07-09): Ryan believes unsigned drafts already survive
   reload; the code says otherwise — drafts live in `caseUi.editors`, plain
   `useState` at App.tsx:49 (and `openCaseIds` App.tsx:46), wiped on reload.
