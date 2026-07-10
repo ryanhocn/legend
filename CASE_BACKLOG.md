@@ -88,9 +88,9 @@ The problem is on the chart and a junior can catch and escalate it.
   Spine: do not thrombolyse a mimic or a haemorrhage; glucose and CT gate the decision. Catch: glucose not checked, CT/anticoag status not confirmed pre-lysis. Stroke / Medicine. Anchor: KCP wk4.
 - [ ] **`ugibvarices001`**: cirrhotic, melaena, under-resuscitated, on a DOAC.
   Spine: variceal bleed severity plus an anticoagulant not stopped or reversed. Catch: Blatchford not scored, anticoag not held, no terlipressin/antibiotics. Gastroenterology / Surgery. Anchor: STEP.
-- [ ] **`hyponatraemia001`**: post-op, confused, Na 118 from hypotonic IV fluids, correcting fast.
-  Spine: iatrogenic cause plus the second trap of over-rapid correction (osmotic demyelination). Catch: fluids not reviewed, correction rate not capped. Medicine. Anchor: STEP.
-  **IN PROGRESS (2026-07-09):** a partial folder sits on disk at `src/data/patients/hyponatraemia001/` (bloods.ts + patient.json only, deliberately left uncommitted and NOT in the registry). Next case-generation run: resume here first. Still needed: summary.ts, documents.ts, encounters.ts, rubric.ts + rubric.test.ts, registry entry, acceptance checklist. If the folder is gone, start it fresh.
+- [x] **`hyponatraemia001`**: confused + fall, Na 118 mislabelled ?dehydration, correcting too fast.
+  Spine: drug-induced cause (indapamide + sertraline) plus the second trap of over-rapid correction (osmotic demyelination); the "dehydration" saline is still running and the sodium is already climbing. Catch: fluids not stopped, correction ceiling not applied, culprit drugs not held. Medicine. Anchor: STEP.
+  **DONE (2026-07-10):** full case built (summary/documents/encounters/rubric + rubric.test.ts, registry entry); minGrade fy, progress note. tsc + 189 tests + lint green.
 - [ ] **`aorticdissection001`**: an apparent STEMI that is actually a dissection.
   Spine: antiplatelets or thrombolysis here is catastrophic; cross-arm BP and mediastinum are the tells. Catch: cross-arm BP not checked, CT aorta not done before anticoagulating. Cardiology / Vascular. Anchor: KCP wk15, STEP.
 - [ ] **`sah001`**: thunderclap headache dismissed as migraine, patient anticoagulated.

@@ -81,11 +81,18 @@ switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
   in docs). Suite now 182 tests / 23 files.
 
 ## In flight
-- `src/data/patients/hyponatraemia001/` is a deliberately uncommitted partial case
-  (bloods.ts + patient.json only, NOT in the registry, so the build is unaffected).
-  Ryan's call (2026-07-09): leave it on disk; CASE_BACKLOG.md carries an
-  IN PROGRESS note telling the next case-generation run to resume it. This is the
-  ONLY intentionally uncommitted work.
+- `hyponatraemia001` FINISHED 2026-07-10 (was the parked partial): full case built
+  (summary/documents/encounters/rubric + rubric.test.ts, registry entry). 71F
+  confusion+fall, Na 118 mislabelled ?dehydration with saline still running and Na
+  climbing 118→124, dual culprits indapamide+sertraline, seizure filed as a "funny
+  turn". General Medicine, minGrade fy, progress note. tsc + 189 tests + lint green.
+  Case registry is now 17 folders.
+- Dynamic patients: research complete 2026-07-10 (5-stream sweep), writeup in repo
+  `DYNAMIC_PATIENTS.md`. Recommended direction: event-sourcing (`case_event` log) +
+  action-keyed sim clock + lazy reveal on read; pre-authored/locked chart content for
+  the rubric, LLM for prose only; Patient Message on the same event stream. Six product
+  decisions still Ryan's (sim-time model, rubric fairness, v1 content policy, graded vs
+  formative, multiplayer scope column, branch count). Not specced or approved yet.
 - Session 2026-07-09/10 commit range: `8574cee..HEAD` (backend pivot: research,
   phase 1, phase 2, handoff doc reconciliation). Nothing pushed (standing rule:
   never push without Ryan's approval).

@@ -107,6 +107,15 @@ import { caseDvt001Documents, caseDvt001Notes } from "./dvt001/documents";
 import { caseDvt001Encounters } from "./dvt001/encounters";
 import { caseDvt001Rubric } from "./dvt001/rubric";
 import { caseDvt001Summary } from "./dvt001/summary";
+import hyponatraemia001Patient from "./hyponatraemia001/patient.json";
+import { bloods as hyponatraemia001Bloods } from "./hyponatraemia001/bloods";
+import {
+  caseHyponatraemia001Documents,
+  caseHyponatraemia001Notes,
+} from "./hyponatraemia001/documents";
+import { caseHyponatraemia001Encounters } from "./hyponatraemia001/encounters";
+import { caseHyponatraemia001Rubric } from "./hyponatraemia001/rubric";
+import { caseHyponatraemia001Summary } from "./hyponatraemia001/summary";
 import aspiration001Patient from "./aspiration001/patient.json";
 import { bloods as aspiration001Bloods } from "./aspiration001/bloods";
 import {
@@ -267,6 +276,19 @@ export const caseRegistry: CaseBundle[] = [
     rubric: caseDvt001Rubric,
     summary: caseDvt001Summary,
     bloods: dvt001Bloods,
+  },
+  {
+    id: "hyponatraemia001",
+    specialty: "General Medicine",
+    handoff:
+      "71F, confusion + fall. Na 118 clerked as ?dehydration — saline still running, Na 124 by 06:10 (+6 in 9h). Unexplained 'funny turn' on the ED trolley; indapamide + sertraline given this morning.",
+    patient: hyponatraemia001Patient,
+    documents: caseHyponatraemia001Documents,
+    notes: caseHyponatraemia001Notes,
+    encounters: caseHyponatraemia001Encounters,
+    rubric: caseHyponatraemia001Rubric,
+    summary: caseHyponatraemia001Summary,
+    bloods: hyponatraemia001Bloods,
   },
   {
     id: "hypercalcaemia001",
