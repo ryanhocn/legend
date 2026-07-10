@@ -1,0 +1,34 @@
+{
+  "surname": "Test",
+  "forename": "Test",
+  "displayName": "Test, Test",
+  "initials": "TT",
+  "pronouns": "they/them",
+  "sex": "Not specified",
+  "age": 40,
+  "dob": "01/01/1986",
+  "mrn": "LEG-T00001",
+  "location": "Ward T Bay 1",
+  "specialty": "TestList",
+  "attending": {
+    "forename": "Test",
+    "surname": "Consultant",
+    "credential": "MD",
+    "specialty": "TestList"
+  },
+  "primaryCare": {
+    "forename": "Test",
+    "surname": "GP",
+    "credential": "MD",
+    "specialty": "General Practice"
+  },
+  "allergies": "No known drug allergies",
+  "isolation": "None",
+  "code": "For escalation",
+  "acuity": "NEWS2 0 — placeholder test patient",
+  "presentingComplaint": "Test patient for prod persistence checks — not a clinical case.",
+  "phone": "N/A",
+  "infection": "None recorded",
+  "bmi": "25.0",
+  "stickyNote": "Placeholder test patient — not a clinical case.\nUsed to verify server-side note persistence in prod.\nSign a note here, reload, and confirm it comes back.\nEverything on this chart is synthetic and deliberately blank."
+}

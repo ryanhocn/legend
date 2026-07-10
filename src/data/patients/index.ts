@@ -125,6 +125,12 @@ import {
 import { caseAspiration001Encounters } from "./aspiration001/encounters";
 import { caseAspiration001Rubric } from "./aspiration001/rubric";
 import { caseAspiration001Summary } from "./aspiration001/summary";
+import test001Patient from "./test001/patient.json";
+import { bloods as test001Bloods } from "./test001/bloods";
+import { caseTest001Documents, caseTest001Notes } from "./test001/documents";
+import { caseTest001Encounters } from "./test001/encounters";
+import { caseTest001Rubric } from "./test001/rubric";
+import { caseTest001Summary } from "./test001/summary";
 
 /**
  * Every registered training case, in patient-list display order. Adding a case
@@ -341,6 +347,19 @@ export const caseRegistry: CaseBundle[] = [
     rubric: caseAspiration001Rubric,
     summary: caseAspiration001Summary,
     bloods: aspiration001Bloods,
+  },
+  {
+    id: "test001",
+    specialty: "TestList",
+    handoff:
+      "Test patient for prod persistence checks — not a clinical case. Synthetic placeholder chart used to verify server-side note persistence.",
+    patient: test001Patient,
+    documents: caseTest001Documents,
+    notes: caseTest001Notes,
+    encounters: caseTest001Encounters,
+    rubric: caseTest001Rubric,
+    summary: caseTest001Summary,
+    bloods: test001Bloods,
   },
 ];
 
