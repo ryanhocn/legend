@@ -4,10 +4,11 @@
 
 Last updated: 2026-07-10
 Branch / worktree: main
-Latest session: Phase 1 backend foundation EXECUTED + DEPLOYED (d1f43d8..d7659a5;
-Hono /api worker, D1 legend-db, Cloudflare vite plugin, TS wiring; live
-/api/health green). Prior: backend research + plan for user accounts (see "Next
-concrete step"). Prior sessions: hierarchy system + case fleet
+Latest session: Phase 2 real accounts SHIPPED (7ee4b06..HEAD: better-auth at
+/api/auth, anonymous guests + Google, persona on the user table, D1 migrations
+local+remote, session-gated SPA; secrets in prod; live /api/auth/ok +
+anonymous sign-in verified). Same day, earlier: Phase 1 foundation shipped
+(d1f43d8..d7659a5). Prior sessions: hierarchy system + case fleet
 (68e1f64..8574cee), multi-case foundation (8d694ea registry, dec89c0 patient
 switching, CASE_AUTHORING.md), Cloudflare deploy + README + mobile gate
 (3b04aeb..70c80ca), tab restructure (47ee20b..54a1ea1), note feedback
@@ -122,9 +123,16 @@ sources); recommended stack:
   foundation — SHIPPED 2026-07-10; (2) better-auth accounts — **BUILT
   2026-07-10, T1-T7 + fixes complete (7ee4b06..HEAD), final review READY TO
   SHIP; T8 (prod secrets + remote migrations + deploy) awaiting Ryan's go**;
-  (3) notes/attempts persistence API + import ~1.5-2d; (4) Patient Message +
-  LLM proxy. Both phase-1 carry-overs landed in phase 2 (worker eslint
-  globals; real-D1 vitest-pool-workers project, 2 tests).
+  (3) notes/attempts persistence API + import ~1.5-2d — NEXT: spec+plan; (4)
+  Patient Message + LLM proxy. Both phase-1 carry-overs landed in phase 2
+  (worker eslint globals; real-D1 vitest-pool-workers project, 2 tests).
+- Phase 2 T8 SHIPPED 2026-07-10: 3 secrets in prod (`wrangler secret put`),
+  remote migrations applied (auth tables live in prod legend-db), deployed
+  (version 86c78d99). Live checks: /api/auth/ok, /api/health, SPA + deep
+  links, anonymous sign-in 200 (note: better-auth POSTs need a JSON body and
+  an Origin header — a bare curl 400s by design). Ryan to click through the
+  live Google flow once; a couple of curl-test anonymous rows exist in prod
+  (harmless; the anon-GC item below covers cleanup).
 - **Phase-3 entry warnings (from the phase-2 final review — read before
   starting phase 3):**
   - Key server-side note ownership on better-auth `user.id`, NOT `hcpId`:
