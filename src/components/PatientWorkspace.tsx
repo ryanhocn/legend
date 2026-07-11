@@ -22,6 +22,7 @@ import { CaseContext, useCase } from "../context/CaseContext";
 import { mainTabs } from "../data/tabs";
 import { useCaseWork } from "../hooks/useCaseWork";
 import { htmlToPlainText, wordCount } from "../lib/noteText";
+import { noteOwnership } from "../lib/noteOwnership";
 import {
   buildAddendumBlock,
   buildUserNote,
@@ -125,11 +126,9 @@ export function PatientWorkspace({
     rightRef.current?.expand();
   }
 
-  // A note is "yours" if the server filed it under your account for this case,
-  // or it is the static persona note this case has you play.
-  const isUserNote = (note: Note) => userNotes.some((n) => n.id === note.id);
-  const ownNote = (note: Note) =>
-    isUserNote(note) || (!!note.authorId && note.authorId === activeCase.playerHcpId);
+  const ownership = (note: Note) => noteOwnership(note, { userNotes, myHcpId: user.hcpId });
+  const canEdit = (note: Note) => ownership(note).canEdit;
+  const canDelete = (note: Note) => ownership(note).canDelete;
 
   // Reopen an incomplete user note as an editor draft; Sign/Pend re-files it in
   // place. Focuses the existing tab if one is already open for this note.
@@ -343,8 +342,8 @@ export function PatientWorkspace({
                     onDeleteNote={deleteUserNote}
                     onEditNote={openEditDraft}
                     onAddendumNote={openAddendumDraft}
-                    ownNote={ownNote}
-                    isUserNote={isUserNote}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
                   />
                 )}
 
@@ -357,8 +356,8 @@ export function PatientWorkspace({
                     onDeleteNote={deleteUserNote}
                     onEditNote={openEditDraft}
                     onAddendumNote={openAddendumDraft}
-                    ownNote={ownNote}
-                    isUserNote={isUserNote}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
                   />
                 )}
 

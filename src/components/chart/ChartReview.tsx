@@ -37,8 +37,8 @@ export function ChartReview({
   onDeleteNote,
   onEditNote,
   onAddendumNote,
-  ownNote,
-  isUserNote,
+  canEdit,
+  canDelete,
 }: {
   chartTab: ChartTab;
   setChartTab: (tab: ChartTab) => void;
@@ -51,8 +51,8 @@ export function ChartReview({
   onDeleteNote: (id: string) => void;
   onEditNote: (note: Note) => void;
   onAddendumNote: (note: Note) => void;
-  ownNote: (note: Note) => boolean;
-  isUserNote: (note: Note) => boolean;
+  canEdit: (note: Note) => boolean;
+  canDelete: (note: Note) => boolean;
 }) {
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [filters, setFilters] = useState<Set<FilterKey>>(new Set());
@@ -142,8 +142,8 @@ export function ChartReview({
             onDeleteNote={onDeleteNote}
             onEditNote={onEditNote}
             onAddendumNote={onAddendumNote}
-            ownNote={ownNote}
-            isUserNote={isUserNote}
+            canEdit={canEdit}
+            canDelete={canDelete}
           />
         )}
         {chartTab !== "encounters" && chartTab !== "notes" && (

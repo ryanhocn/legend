@@ -66,16 +66,16 @@ export function NotesBrowser({
   onDeleteNote,
   onEditNote,
   onAddendumNote,
-  ownNote,
-  isUserNote,
+  canEdit,
+  canDelete,
 }: {
   notes: Note[];
   onNewNote: () => void;
   onDeleteNote: (id: string) => void;
   onEditNote: (note: Note) => void;
   onAddendumNote: (note: Note) => void;
-  ownNote: (note: Note) => boolean;
-  isUserNote: (note: Note) => boolean;
+  canEdit: (note: Note) => boolean;
+  canDelete: (note: Note) => boolean;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>("All Notes");
   const [query, setQuery] = useState("");
@@ -276,7 +276,7 @@ export function NotesBrowser({
                 // Only user-authored notes are deletable; deleting also
                 // closes the note's preview tab.
                 onDelete={
-                  activeNote && isUserNote(activeNote)
+                  activeNote && canDelete(activeNote)
                     ? () => {
                         closePreview(activeNote.id);
                         onDeleteNote(activeNote.id);
@@ -286,12 +286,12 @@ export function NotesBrowser({
                 onEdit={
                   activeNote &&
                   activeNote.status === "incomplete" &&
-                  isUserNote(activeNote)
+                  canEdit(activeNote)
                     ? () => onEditNote(activeNote)
                     : undefined
                 }
                 onAddendum={
-                  activeNote && activeNote.status !== "incomplete" && ownNote(activeNote)
+                  activeNote && activeNote.status !== "incomplete"
                     ? () => onAddendumNote(activeNote)
                     : undefined
                 }
