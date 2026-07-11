@@ -208,6 +208,10 @@ feedback (cce42a4..dc9f29b).
   never push without Ryan's approval).
 
 ## Next concrete step
+START HERE: read `PLAN4_KICKOFF.md` (repo root) - a single consolidated kickoff for the Plan 4
+session: the engine seams to build on, the Flag-1 anchor caveat, the open rubric-cursor
+decision, the 2 deferred engine notes, and a suggested 3-way split. Then:
+
 Write + execute **Dynamic Patients Plan 4** (product loop, on top of the Plan 3 engine).
 Read FIRST: `DYNAMIC_PATIENTS_SPEC.md` §8 (chronos), §9 (NPC auto-progression), §10
 (rubric fairness + leak safety), §11 (the `events.ts` authoring surface). Scope:
