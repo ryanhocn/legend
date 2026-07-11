@@ -6,8 +6,9 @@ import { currentPersona } from "./persona";
  * (whose deletion would cascade the rows away). UPDATE OR REPLACE on
  * wrapup_attempt: if the target account already has an attempt for the same
  * case, the guest's (their live session's) attempt wins. Alias history moves
- * too, and the outgoing guest persona itself is snapshotted under the new
- * account so it survives as a switchable "previous alias".
+ * too, and the outgoing guest persona becomes the linked account's DEFAULT
+ * identity (forename/surname/grade/hcpId written onto the user row), not a
+ * snapshotted "previous alias".
  */
 export async function rekeyUserWork(
   db: D1Database,
