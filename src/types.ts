@@ -245,6 +245,10 @@ export type CaseUiState = {
   editors: NoteDraft[];
   activeEditorId: string | null;
   wrapupOpen: boolean;
+  /** Notes-activity preview tabs kept open, lifted from NotesBrowser so they
+   * survive main-tab switches AND page reload. */
+  openNoteIds: string[];
+  activePreviewId: string | null;
 };
 
 /** PDQI-9 note-quality dimensions (Stetson et al., 2012). */

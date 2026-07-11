@@ -68,6 +68,9 @@ export function NotesBrowser({
   onAddendumNote,
   canEdit,
   canDelete,
+  openNoteIds,
+  activePreviewId,
+  onPreviewChange,
 }: {
   notes: Note[];
   onNewNote: () => void;
@@ -76,6 +79,9 @@ export function NotesBrowser({
   onAddendumNote: (note: Note) => void;
   canEdit: (note: Note) => boolean;
   canDelete: (note: Note) => boolean;
+  openNoteIds: string[];
+  activePreviewId: string | null;
+  onPreviewChange: (patch: { openNoteIds?: string[]; activePreviewId?: string | null }) => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>("All Notes");
   const [query, setQuery] = useState("");
@@ -91,20 +97,15 @@ export function NotesBrowser({
     [notes, activeTab, query],
   );
 
-  // Preview tabs: every selected note stays open (across category filters)
-  // until closed, so several notes can be read side by side while writing.
-  // Seeded with the newest note, mirroring the old auto-preview behavior.
-  const [openIds, setOpenIds] = useState<string[]>(() =>
-    filtered[0] ? [filtered[0].id] : [],
-  );
-  const [activePreviewId, setActivePreviewId] = useState<string | null>(
-    filtered[0]?.id ?? null,
-  );
+  // Preview tabs live in CaseUiState now (controlled), so they survive main-tab
+  // switches and reload. An empty persisted set falls back to the newest note.
+  const openIds = openNoteIds.length ? openNoteIds : filtered[0] ? [filtered[0].id] : [];
+  const previewId = activePreviewId ?? openIds[0] ?? null;
 
   const openNotes = openIds
     .map((id) => notes.find((n) => n.id === id))
     .filter((n): n is Note => Boolean(n));
-  const activeNote = openNotes.find((n) => n.id === activePreviewId) ?? openNotes.at(-1) ?? null;
+  const activeNote = openNotes.find((n) => n.id === previewId) ?? openNotes.at(-1) ?? null;
 
   // Browser-tab behavior: on close, freeze the current per-tab width so the
   // remaining close buttons stay under the cursor; re-flow once the pointer
@@ -115,8 +116,8 @@ export function NotesBrowser({
   function openPreview(id: string) {
     // Opening a tab is a fresh flow: drop any freeze left over from closing.
     setFrozenTabWidth(null);
-    setOpenIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setActivePreviewId(id);
+    const nextIds = openIds.includes(id) ? openIds : [...openIds, id];
+    onPreviewChange({ openNoteIds: nextIds, activePreviewId: id });
   }
 
   function closePreview(id: string) {
@@ -125,7 +126,7 @@ export function NotesBrowser({
     setFrozenTabWidth(
       firstTab && openNotes.length > 2 ? firstTab.getBoundingClientRect().width : null,
     );
-    setOpenIds((prev) => prev.filter((openId) => openId !== id));
+    onPreviewChange({ openNoteIds: openIds.filter((openId) => openId !== id) });
   }
 
   function toggleList() {
@@ -256,7 +257,7 @@ export function NotesBrowser({
                         role="tab"
                         aria-selected={note.id === activeNote?.id}
                         className="preview-tab-label"
-                        onClick={() => setActivePreviewId(note.id)}
+                        onClick={() => onPreviewChange({ activePreviewId: note.id })}
                       >
                         {note.noteType}
                       </button>

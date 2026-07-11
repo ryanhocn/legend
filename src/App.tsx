@@ -26,6 +26,8 @@ const DEFAULT_UI: CaseUiState = {
   editors: [],
   activeEditorId: null,
   wrapupOpen: false,
+  openNoteIds: [],
+  activePreviewId: null,
 };
 
 function App() {

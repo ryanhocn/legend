@@ -39,6 +39,9 @@ export function ChartReview({
   onAddendumNote,
   canEdit,
   canDelete,
+  openNoteIds,
+  activePreviewId,
+  onPreviewChange,
 }: {
   chartTab: ChartTab;
   setChartTab: (tab: ChartTab) => void;
@@ -53,6 +56,9 @@ export function ChartReview({
   onAddendumNote: (note: Note) => void;
   canEdit: (note: Note) => boolean;
   canDelete: (note: Note) => boolean;
+  openNoteIds: string[];
+  activePreviewId: string | null;
+  onPreviewChange: (patch: { openNoteIds?: string[]; activePreviewId?: string | null }) => void;
 }) {
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [filters, setFilters] = useState<Set<FilterKey>>(new Set());
@@ -144,6 +150,9 @@ export function ChartReview({
             onAddendumNote={onAddendumNote}
             canEdit={canEdit}
             canDelete={canDelete}
+            openNoteIds={openNoteIds}
+            activePreviewId={activePreviewId}
+            onPreviewChange={onPreviewChange}
           />
         )}
         {chartTab !== "encounters" && chartTab !== "notes" && (

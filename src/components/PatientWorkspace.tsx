@@ -59,7 +59,16 @@ export function PatientWorkspace({
   onCloseSticky: () => void;
 }) {
   const activeCase = useCase();
-  const { mainTab, chartTab, selectedDocId, editors, activeEditorId, wrapupOpen } = ui;
+  const {
+    mainTab,
+    chartTab,
+    selectedDocId,
+    editors,
+    activeEditorId,
+    wrapupOpen,
+    openNoteIds,
+    activePreviewId,
+  } = ui;
   const work = useCaseWork(activeCase.id);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -344,6 +353,9 @@ export function PatientWorkspace({
                     onAddendumNote={openAddendumDraft}
                     canEdit={canEdit}
                     canDelete={canDelete}
+                    openNoteIds={openNoteIds}
+                    activePreviewId={activePreviewId}
+                    onPreviewChange={(patch) => onPatch(patch)}
                   />
                 )}
 
@@ -358,6 +370,9 @@ export function PatientWorkspace({
                     onAddendumNote={openAddendumDraft}
                     canEdit={canEdit}
                     canDelete={canDelete}
+                    openNoteIds={openNoteIds}
+                    activePreviewId={activePreviewId}
+                    onPreviewChange={(patch) => onPatch(patch)}
                   />
                 )}
 
