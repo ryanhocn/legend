@@ -208,6 +208,34 @@ Plan:
 - Likely fit for discharge in the next 24 to 48 hours pending the microbiology plan.`,
 };
 
+const wardRoundD2Encounter: Encounter = {
+  id: "enc-ward-round-d2",
+  date: "17/06/2026",
+  time: "08:00",
+  class: "inpatient",
+  type: "Ward Round",
+  specialty: "General Surgery",
+  deptAbbrev: "GSAMU",
+  provider: "Sowande, Bisi, MD",
+  description: "Day 2 surgical progress round. Recovering after the biliary procedure; awaiting microbiology.",
+  status: "Open",
+  location: "AMU",
+};
+
+const wardRoundD3Encounter: Encounter = {
+  id: "enc-ward-round-d3",
+  date: "18/06/2026",
+  time: "08:00",
+  class: "inpatient",
+  type: "Ward Round",
+  specialty: "General Surgery",
+  deptAbbrev: "GSAMU",
+  provider: "Whitlock, Grace, MD",
+  description: "Day 3 surgical progress round. Good recovery; planning oral step-down and discharge.",
+  status: "Open",
+  location: "AMU",
+};
+
 // --- Vitals trend (post-ERCP recovery) ---
 
 const vitalsD1Evening: VitalsPoint = { t: "18:00", sys: 118, dia: 74, hr: 82, resp: 16, spo2: 97, tempC: 37.4 };
@@ -228,10 +256,12 @@ export const cholangitis001Events: AuthoredEvent[] = [
   { at: 126000, seq: 5, dedupeKey: "micro-id-enc", event: { kind: "encounter.append", encounter: idEncounter } },
   { at: 126000, seq: 6, dedupeKey: "micro-id", event: { kind: "result.release", document: idMicro } },
   { at: 133200, seq: 7, event: { kind: "vitals.append", point: vitalsD3 } },
-  { at: 140400, seq: 8, dedupeKey: "npc-d2", event: { kind: "note.create", note: npcDay2Note } },
-  { at: 208800, seq: 9, dedupeKey: "micro-sens-enc", event: { kind: "encounter.append", encounter: sensEncounter } },
-  { at: 208800, seq: 10, dedupeKey: "micro-sens", event: { kind: "result.release", document: sensMicro } },
-  { at: 208800, seq: 11, dedupeKey: "npc-d3", event: { kind: "note.create", note: npcDay3Note } },
+  { at: 140400, seq: 8, dedupeKey: "ward-d2-enc", event: { kind: "encounter.append", encounter: wardRoundD2Encounter } },
+  { at: 140400, seq: 9, dedupeKey: "npc-d2", event: { kind: "note.create", note: npcDay2Note } },
+  { at: 208800, seq: 10, dedupeKey: "micro-sens-enc", event: { kind: "encounter.append", encounter: sensEncounter } },
+  { at: 208800, seq: 11, dedupeKey: "micro-sens", event: { kind: "result.release", document: sensMicro } },
+  { at: 208800, seq: 12, dedupeKey: "ward-d3-enc", event: { kind: "encounter.append", encounter: wardRoundD3Encounter } },
+  { at: 208800, seq: 13, dedupeKey: "npc-d3", event: { kind: "note.create", note: npcDay3Note } },
 ];
 
 /**
