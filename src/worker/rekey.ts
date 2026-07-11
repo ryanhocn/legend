@@ -1,4 +1,4 @@
-import { currentPersona, ensureSnapshot } from "./persona";
+import { currentPersona } from "./persona";
 
 /**
  * Move a guest's work to the account they just linked. Runs inside
@@ -27,6 +27,15 @@ export async function rekeyUserWork(
       .bind(fromUserId, toUserId),
     db.prepare(`UPDATE user_alias SET userId = ?2 WHERE userId = ?1`).bind(fromUserId, toUserId),
   ]);
-  // After the move, so the dedupe check sees the transferred rows.
-  await ensureSnapshot(db, toUserId, outgoing);
+  // The guest already chose a full persona at "Start training", so make it the
+  // linked account's DEFAULT identity rather than demoting it to a "previous
+  // alias". hcpId has no UNIQUE constraint (migration 0001), so copying it while
+  // the guest row still exists is safe. If the guest somehow has no hcpId, leave
+  // the row untouched and let the normal persona-setup screen run.
+  if (outgoing && outgoing.hcpId) {
+    await db
+      .prepare(`UPDATE user SET forename = ?2, surname = ?3, grade = ?4, hcpId = ?5 WHERE id = ?1`)
+      .bind(toUserId, outgoing.forename, outgoing.surname, outgoing.grade, outgoing.hcpId)
+      .run();
+  }
 }

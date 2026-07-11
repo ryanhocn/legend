@@ -245,7 +245,7 @@ describe("rekeyUserWork", () => {
     expect(attempts.results.map((r) => r.text)).toEqual(["guest attempt"]);
   });
 
-  test("linking moves alias rows and records the guest persona as an alias", async () => {
+  test("linking moves prior alias rows without snapshotting the current persona as a new alias", async () => {
     const auth = createAuth(env as unknown as Env, "http://localhost");
     const anon = (await auth.api.signInAnonymous())!.user.id;
     const google = (await auth.api.signInAnonymous())!.user.id; // stand-in row for the linked account
@@ -272,11 +272,38 @@ describe("rekeyUserWork", () => {
     expect(rows.some((r) => r.hcpId === "d900001")).toBe(true); // moved row
     expect(
       rows.some((r) => r.forename === "Test" && r.surname === "Test" && r.hcpId === anonHcp),
-    ).toBe(true); // outgoing guest persona snapshotted
+    ).toBe(false); // current persona is now the account default, not a snapshotted alias
     const orphaned = await env.DB.prepare(`SELECT COUNT(*) AS n FROM user_alias WHERE userId = ?1`)
       .bind(anon)
       .first<{ n: number }>();
     expect(orphaned?.n).toBe(0);
+  });
+
+  test("guest link makes the guest persona the account default, not a new alias", async () => {
+    const auth = createAuth(env as unknown as Env, "http://localhost");
+    const anon = (await auth.api.signInAnonymous())!.user.id;
+    const google = (await auth.api.signInAnonymous())!.user.id; // stand-in linked row
+
+    // Guest has a full chosen persona; the freshly-created Google row has none
+    // (mirrors better-auth: Google create sets name/email only, plus a new hcpId).
+    await env.DB.prepare(
+      `UPDATE user SET forename='Alice', surname='Smith', grade='st3', hcpId='d9-AAA' WHERE id=?1`,
+    ).bind(anon).run();
+    await env.DB.prepare(
+      `UPDATE user SET forename=NULL, surname=NULL, grade=NULL, hcpId='d9-BBB' WHERE id=?1`,
+    ).bind(google).run();
+
+    await rekeyUserWork(env.DB, anon, google);
+
+    const row = await env.DB.prepare(
+      `SELECT forename, surname, grade, hcpId FROM user WHERE id=?1`,
+    ).bind(google).first<{ forename: string; surname: string; grade: string; hcpId: string }>();
+    expect(row).toEqual({ forename: "Alice", surname: "Smith", grade: "st3", hcpId: "d9-AAA" });
+
+    const alias = await env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM user_alias WHERE userId=?1 AND hcpId='d9-AAA'`,
+    ).bind(google).first<{ n: number }>();
+    expect(alias?.n).toBe(0);
   });
 });
 
