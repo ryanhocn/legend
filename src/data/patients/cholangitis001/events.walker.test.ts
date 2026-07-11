@@ -52,8 +52,16 @@ describe("cholangitis001 timeline walker", () => {
     }
   });
 
-  test("simNow only ever moves forward across the reachable states", () => {
-    for (let i = 1; i < states.length; i += 1) expect(states[i]).toBeGreaterThan(states[i - 1]);
+  test("revealing is monotonic in sim-time: an earlier reveal is a prefix of a later one", () => {
+    for (let i = 1; i < states.length; i += 1) {
+      const earlier = revealEvents(events, states[i - 1]);
+      const later = revealEvents(events, states[i]);
+      // Reveal is append-only in time: nothing already revealed disappears, and
+      // because seq is monotonic with `at` (asserted separately) the earlier set
+      // is exactly the seq-ordered prefix of the later set.
+      expect(later.length).toBeGreaterThanOrEqual(earlier.length);
+      expect(later.slice(0, earlier.length)).toEqual(earlier);
+    }
   });
 
   test("a trainee note covering a round suppresses that round's NPC note", () => {
