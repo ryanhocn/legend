@@ -34,7 +34,6 @@ export function buildContribution(args: {
   simNow: number;
 }): ContributionRow[] {
   const { rounds, userNotes, liveNotes, rubric, userGrade, simNow } = args;
-  const userIds = new Set(userNotes.map((n) => n.id));
   const aboveGrade = isOverreach(userGrade, rubric.task.minGrade);
   // The rubric scores the day-1 round; its encounter is where trainee notes land
   // by default (enc-admission). Percent is shown only there.
@@ -49,7 +48,7 @@ export function buildContribution(args: {
         result && result.possible > 0 ? Math.round((100 * result.total) / result.possible) : null;
       return { key: round.encounterId, label: round.label, status: "you", percent, aboveGrade };
     }
-    const npc = liveNotes.find((n) => n.encounterId === round.encounterId && !userIds.has(n.id));
+    const npc = round.npcNoteId ? liveNotes.find((n) => n.id === round.npcNoteId) : undefined;
     if (npc) {
       return { key: round.encounterId, label: round.label, status: "team", percent: null, aboveGrade: false };
     }

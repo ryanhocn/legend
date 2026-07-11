@@ -191,6 +191,11 @@ A dynamic case's `events.ts` exports three arrays, all optional but authored tog
   reply }`), matched with the same rubric-trigger engine as rubric items (`RubricTrigger`
   groups, no LLM). A matched intent advances `simNow` straight to `targetAt`, which lets
   intervening rounds' NPC notes materialise on catch-up.
+  - **Caution:** if a `reply` names a specific datum (the organism, its sensitivities, a
+    result value), that text must be kept in sync BY HAND with the authored reveal payload
+    it describes (e.g. a `ClinicalMicro.organisms[].sensitivities` entry). There is no CI
+    check that the two agree; a drifted `reply` will quietly tell the trainee something the
+    chart does not show.
 
 **FLAG 1 (anchor vs static epochs):** cholangitis001's *static*, pre-authored note
 `timestamp` epochs sit roughly 24-33 hours BEHIND the case's `anchor` (the static notes

@@ -75,4 +75,18 @@ describe("buildContribution", () => {
   test("empty rounds yields no rows", () => {
     expect(buildContribution({ rounds: [], userNotes: [], liveNotes: [], rubric, userGrade: "st3", simNow: 0 })).toEqual([]);
   });
+
+  test("round 0 is not 'team' just because static admission notes exist", () => {
+    // A static (non-trainee) note on enc-admission must NOT mark the day-1 round as team-covered.
+    const staticAdmissionNote = note("static-hp-001", "enc-admission", "admission H&P");
+    const rows = buildContribution({
+      rounds,
+      userNotes: [],
+      liveNotes: [staticAdmissionNote],
+      rubric,
+      userGrade: "st3",
+      simNow: 0,
+    });
+    expect(rows[0].status).toBe("current");
+  });
 });
