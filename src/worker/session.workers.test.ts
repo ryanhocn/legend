@@ -152,3 +152,21 @@ describe("case_session follows the account", () => {
     ).toBeNull();
   });
 });
+
+describe("PUT /api/cases/:caseId/session monotonic clamp", () => {
+  test("a lower simNow never rewinds the stored clock", async () => {
+    const cookie = await anonCookie();
+    const put = (simNow: number) =>
+      callWorker("/api/cases/cholangitis001/session", {
+        method: "PUT",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ simNow }),
+      });
+    expect(await (await put(9000)).json()).toEqual({ simNow: 9000 });
+    // A stale tab tries to rewind to 3600: the server holds at 9000 and echoes it.
+    expect(await (await put(3600)).json()).toEqual({ simNow: 9000 });
+
+    const res = await callWorker("/api/cases/cholangitis001/session", { headers: { cookie } });
+    expect(await res.json()).toEqual({ simNow: 9000 });
+  });
+});

@@ -52,11 +52,22 @@ session.put("/cases/:caseId/session", async (c) => {
   if (!raw || typeof raw.simNow !== "number" || !Number.isFinite(raw.simNow) || raw.simNow < 0)
     return c.json({ error: "bad request" }, 400);
   const simNow = Math.floor(raw.simNow);
+  const scope = c.get("userId");
+  const caseId = c.req.param("caseId");
+  // Forward-only: never let a stale client rewind the clock. The client
+  // advanceSim already clamps forward; this makes it robust to two tabs.
   await c.env.DB.prepare(
     `INSERT INTO case_session (scope, caseId, simNow, updatedAt) VALUES (?1, ?2, ?3, ?4)
-     ON CONFLICT (scope, caseId) DO UPDATE SET simNow = ?3, updatedAt = ?4`,
+     ON CONFLICT (scope, caseId) DO UPDATE SET
+       simNow = MAX(case_session.simNow, ?3),
+       updatedAt = ?4`,
   )
-    .bind(c.get("userId"), c.req.param("caseId"), simNow, Date.now())
+    .bind(scope, caseId, simNow, Date.now())
     .run();
-  return c.json({ simNow });
+  const row = await c.env.DB.prepare(
+    `SELECT simNow FROM case_session WHERE scope = ?1 AND caseId = ?2`,
+  )
+    .bind(scope, caseId)
+    .first<{ simNow: number }>();
+  return c.json({ simNow: row?.simNow ?? simNow });
 });
