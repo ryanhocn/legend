@@ -7,7 +7,7 @@ export type PersistedSession = {
   caseUi: Record<string, CaseUiState>;
 };
 
-const EMPTY: PersistedSession = { openCaseIds: [], activeCaseId: null, caseUi: {} };
+const empty = (): PersistedSession => ({ openCaseIds: [], activeCaseId: null, caseUi: {} });
 
 /**
  * Sanitize a raw localStorage blob back into resumable state. Drops case ids no
@@ -20,14 +20,14 @@ export function hydrateSession(
   raw: string | null,
   isKnownCase: (id: string) => boolean,
 ): PersistedSession {
-  if (!raw) return EMPTY;
+  if (!raw) return empty();
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return EMPTY;
+    return empty();
   }
-  if (typeof parsed !== "object" || parsed === null) return EMPTY;
+  if (typeof parsed !== "object" || parsed === null) return empty();
   const p = parsed as Partial<PersistedSession>;
 
   const openCaseIds = Array.isArray(p.openCaseIds)
@@ -35,7 +35,10 @@ export function hydrateSession(
     : [];
 
   const caseUi: Record<string, CaseUiState> = {};
-  const rawUi = (p.caseUi ?? {}) as Record<string, CaseUiState>;
+  const rawUi =
+    p.caseUi && typeof p.caseUi === "object" && !Array.isArray(p.caseUi)
+      ? (p.caseUi as Record<string, CaseUiState>)
+      : {};
   for (const id of openCaseIds) {
     if (rawUi[id]) caseUi[id] = rawUi[id];
   }

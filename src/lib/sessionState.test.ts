@@ -20,6 +20,17 @@ describe("hydrateSession", () => {
     const out = hydrateSession(raw, known);
     expect(out.openCaseIds).toEqual(["a"]);
     expect(Object.keys(out.caseUi)).toEqual(["a"]);
+    expect(out.caseUi.a).toEqual({ mainTab: "notes" });
+  });
+
+  test("non-array openCaseIds returns empty state", () => {
+    const raw = JSON.stringify({ openCaseIds: "oops", activeCaseId: "a", caseUi: {} });
+    expect(hydrateSession(raw, known)).toEqual({ openCaseIds: [], activeCaseId: null, caseUi: {} });
+  });
+
+  test("non-object caseUi is ignored", () => {
+    const raw = JSON.stringify({ openCaseIds: ["a"], activeCaseId: "a", caseUi: "nope" });
+    expect(hydrateSession(raw, known).caseUi).toEqual({});
   });
 
   test("resets a dangling activeCaseId to null", () => {
