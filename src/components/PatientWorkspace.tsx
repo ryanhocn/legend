@@ -28,6 +28,7 @@ import {
 } from "../lib/userNotes";
 import { applyEvents, workToEvents } from "../lib/applyEvents";
 import { revealEvents } from "../lib/reveal";
+import { currentRound, nextRoundAt } from "../lib/rounds";
 import { caseNow } from "../lib/simTime";
 import { plainTextToEditorHtml } from "../lib/smarttext";
 import type { CaseUiState, Note, NoteStatus, UserProfile } from "../types";
@@ -86,6 +87,12 @@ export function PatientWorkspace({
   const revealed = useMemo(
     () => revealEvents(activeCase.events ?? [], work.simNow, coveredEncounterIds),
     [activeCase.events, work.simNow, coveredEncounterIds],
+  );
+  // The round the trainee is currently sitting at (drives note stamping +
+  // advance-on-sign). Null for a static case, which keeps every path inert.
+  const activeRound = useMemo(
+    () => currentRound(activeCase.rounds ?? [], work.simNow),
+    [activeCase.rounds, work.simNow],
   );
   const events = useMemo(
     () => [...revealed, ...workToEvents(userNotes, addenda)],
@@ -200,7 +207,10 @@ export function PatientWorkspace({
     setSaving(true);
     try {
       if (draft.mode === "addendum" && draft.targetNoteId) {
-        await work.addAddendum(draft.targetNoteId, buildAddendumBlock(user, text, caseNow(activeCase.anchor)));
+        await work.addAddendum(
+          draft.targetNoteId,
+          buildAddendumBlock(user, text, caseNow(activeCase.anchor, work.simNow)),
+        );
         onPatch((prev) => ({ editors: prev.editors.filter((d) => d.id !== id) }));
         return;
       }
@@ -209,9 +219,20 @@ export function PatientWorkspace({
           ? userNotes.find((n) => n.id === draft.targetNoteId)
           : undefined;
       if (target) {
-        await work.refileNote(refileUserNote(target, draft, text, status, caseNow(activeCase.anchor)));
+        await work.refileNote(
+          refileUserNote(target, draft, text, status, caseNow(activeCase.anchor, work.simNow)),
+        );
       } else {
-        await work.createNote(buildUserNote(draft, user, text, status, caseNow(activeCase.anchor)));
+        await work.createNote(
+          buildUserNote(
+            draft,
+            user,
+            text,
+            status,
+            caseNow(activeCase.anchor, work.simNow),
+            activeRound?.encounterId ?? "enc-admission",
+          ),
+        );
       }
       if (status === "signed") {
         // The note is committed once createNote/refileNote above has resolved,
@@ -229,6 +250,19 @@ export function PatientWorkspace({
           editors: prev.editors.filter((d) => d.id !== id),
           wrapupOpen: true,
         }));
+        // Signing a fresh round note advances the ward clock to the next round
+        // (spec §7). Edits/refiles and pends never advance. No-op when the case
+        // has no rounds or none remain (nextRoundAt returns null).
+        if (!target) {
+          const nextAt = nextRoundAt(activeCase.rounds ?? [], work.simNow);
+          if (nextAt !== null) {
+            try {
+              await work.advanceSim(nextAt);
+            } catch {
+              setSaveError("Note signed, but the ward clock didn't advance. Reopen the chart to retry.");
+            }
+          }
+        }
       } else {
         onPatch((prev) => ({ editors: prev.editors.filter((d) => d.id !== id) }));
       }
