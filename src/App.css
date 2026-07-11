@@ -3482,3 +3482,106 @@ button {
 .wrapup-overreach p {
   margin: 0 0 12px;
 }
+
+/* Chronos time-skip console (floating, bottom-right). */
+.chronos-dock {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.chronos-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #c9d2dc);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.chronos-launcher.active {
+  background: #eef4ff;
+  border-color: #7aa5ff;
+}
+.chronos-panel {
+  width: 340px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border, #c9d2dc);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.chronos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  font-weight: 600;
+  font-size: 13px;
+}
+.chronos-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chronos-head button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #64748b;
+}
+.chronos-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.chronos-turn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  max-width: 92%;
+}
+.chronos-turn.you {
+  align-self: flex-end;
+  background: #eef4ff;
+}
+.chronos-turn.chronos {
+  align-self: flex-start;
+  background: #f1f5f9;
+}
+.chronos-input {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+.chronos-input input {
+  flex: 1;
+  padding: 7px 9px;
+  border: 1px solid var(--border, #c9d2dc);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.chronos-input button {
+  border: 1px solid #7aa5ff;
+  background: #eef4ff;
+  border-radius: 6px;
+  padding: 0 10px;
+  cursor: pointer;
+  color: #1d4ed8;
+}

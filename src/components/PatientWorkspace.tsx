@@ -14,6 +14,7 @@ import { PatientSidebar } from "./panels/PatientSidebar";
 import { DocumentPanel } from "./panels/DocumentPanel";
 import { PlaceholderModule } from "./PlaceholderModule";
 import { ResultsModule } from "./results/ResultsModule";
+import { ChronosDock } from "./chronos/ChronosDock";
 import { StickyNotePopup } from "./StickyNotePopup";
 import { SummaryModule } from "./summary/SummaryModule";
 import { WrapUpDock } from "./wrapup/WrapUpDock";
@@ -434,6 +435,16 @@ export function PatientWorkspace({
           work.clearAttempt().catch(() => setSaveError("Couldn't clear the attempt."));
         }}
       />
+
+      {activeCase.chronos && activeCase.chronos.length > 0 && (
+        <ChronosDock
+          intents={activeCase.chronos}
+          onAdvance={(targetAt) => {
+            setSaveError(null);
+            work.advanceSim(targetAt).catch(() => setSaveError("Chronos couldn't advance the clock."));
+          }}
+        />
+      )}
     </CaseContext.Provider>
   );
 }
