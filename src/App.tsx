@@ -52,42 +52,42 @@ function App() {
   const [caseUi, setCaseUi] = useState<Record<string, CaseUiState>>({});
   const [stickyOpen, setStickyOpen] = useState(false);
 
-  // Resume the open workspace across a page reload. Keyed by the better-auth
-  // user id so a shared device never leaks one trainee's tabs to the next;
-  // signOut()'s legend* sweep clears it. hydratedRef guards a single restore;
-  // the `hydrated` state gates writes so the first render after restore does not
-  // clobber the stored blob with the initial empty state.
+  // Resume the open workspace across a page reload, scoped per better-auth user
+  // id so a shared device never leaks one trainee's tabs to the next. The guard
+  // is keyed on the CURRENT sessionKey (not once-per-mount), so a same-page
+  // sign-out/sign-in re-hydrates the new user and never writes stale state under
+  // the new key. signOut()'s legend* sweep clears the stored blob.
   const sessionKey = session?.user?.id ? `legend.session.${session.user.id}` : null;
-  const hydratedRef = useRef(false);
-  const [hydrated, setHydrated] = useState(false);
+  const hydratedKeyRef = useRef<string | null>(null);
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hydratedRef.current || !sessionKey) return;
-    hydratedRef.current = true;
+    if (!sessionKey || hydratedKeyRef.current === sessionKey) return;
+    hydratedKeyRef.current = sessionKey;
     const restored = hydrateSession(
       window.localStorage.getItem(sessionKey),
       (id) => caseRegistry.some((b) => b.id === id),
     );
     setOpenCaseIds(restored.openCaseIds);
     setActiveCaseId(restored.activeCaseId);
-    // Backfill each restored entry over DEFAULT_UI so a persisted blob that
-    // predates a newer CaseUiState field never yields undefined downstream.
     setCaseUi(
       Object.fromEntries(
-        Object.entries(restored.caseUi).map(([id, ui]) => [id, { ...DEFAULT_UI, ...ui }]),
+        Object.entries(restored.caseUi).map(
+          ([id, ui]): [string, CaseUiState] => [id, { ...DEFAULT_UI, ...ui }],
+        ),
       ),
     );
-    setHydrated(true);
+    setHydratedKey(sessionKey);
   }, [sessionKey]);
 
   useEffect(() => {
-    if (!hydrated || !sessionKey) return;
+    if (!sessionKey || hydratedKey !== sessionKey) return;
     const blob: PersistedSession = { openCaseIds, activeCaseId, caseUi };
     const timer = setTimeout(() => {
       window.localStorage.setItem(sessionKey, JSON.stringify(blob));
     }, 250);
     return () => clearTimeout(timer);
-  }, [hydrated, sessionKey, openCaseIds, activeCaseId, caseUi]);
+  }, [hydratedKey, sessionKey, openCaseIds, activeCaseId, caseUi]);
 
   const activeCase = activeCaseId ? getCase(activeCaseId) : null;
 
